@@ -5,7 +5,7 @@
 \usage{awsuni(y, lambda=3, gamma=1.3, eta =4, s2hat = NULL, kstar = length(radii),
               radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
                       (5:8)*64,(5:8)*128,(5:8)*256),rmax=max(radii),
-              graph = F,z0 = NULL, eps = 1e-08, control="dyadic", demomode=F)}
+              graph = FALSE,z0 = NULL, eps = 1e-08, control="dyadic", demomode=FALSE)}
 \arguments{
 \item{y}{observed values (ordered by value of independent variable)}
 \item{lambda}{main smoothing parameter (should be approximately 3)}
@@ -19,15 +19,15 @@
              on parameters radii, rmax and eps}
 \item{radii}{radii of neighbourhoods used}
 \item{rmax}{maximal radius of neighborhood to be used, may change kstar}
-\item{graph}{logical, if T progress (for each iteration) is illustrated grahically,
-           if F the program runs until the final estimate is obtained (much faster !!!)}
+\item{graph}{logical, if TRUE progress (for each iteration) is illustrated grahically,
+           if FALSE the program runs until the final estimate is obtained (much faster !!!)}
 \item{z0}{allows for submission of "true" values for illustration and test purposes; only
-               if graph=T,  MSE and MAE are reported for each iteration step}
+               if graph=TRUE,  MSE and MAE are reported for each iteration step}
 \item{eps}{stop iteration if $||(yhatnew - yhat)||^2 < eps * sum(s2hat)$}
 \item{control}{the control step is performed in either a dyadic sceme
            ("dyadic") or using all previous estimates (otherwise)}
-\item{demomode}{if T the function will wait for user input after each iteration; 
-                  only if graph=T }
+\item{demomode}{if TRUE the function will wait for user input after each iteration; 
+                  only if graph=TRUE }
 }
 
 \value{
@@ -58,11 +58,12 @@ apply(Kern(outer(xj,x,"-"))*hj,2,sum)
 x_seq(0,1,1/2047)
 fx6_mofx6(x)
 y_rnorm(fx6,fx6,1)
-tmp_awsuni(y,graph=T,z0=fx6,demomode=T)
+tmp_awsuni(y,graph=TRUE,z0=fx6,demomode=TRUE,rmax=500)
 par(mfrow=c(1,1))
 plot(x,y)
 lines(x,tmp$yhat,col=2)
 lines(x,fx6,col=3)
+title(expression(paste("AWS Reconstruction of blocks data  ",sigma==1)))
 #    sigma==3
 y_rnorm(fx6,fx6,3)
 tmp_awsuni(y)
@@ -70,7 +71,9 @@ par(mfrow=c(1,1))
 plot(x,y)
 lines(x,tmp$yhat,col=2)
 lines(x,fx6,col=3)
+title(expression(paste("AWS Reconstruction of blocks data  ",sigma==3)))
+rm(x,y,fx6,mofx6,tmp)
 }
 \keyword{regression}
 \keyword{nonparametric}
-\keyword{smoothing}
+\keyword{smooth}

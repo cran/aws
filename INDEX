@@ -1,3 +1,7 @@
-awsbi                    Two-dimensional Adaptive Weights Smoothing
-awstri                   Tri-dimensional Adaptive Weights Smoothing
-awsuni                   One-dimensional Adaptive Weights Smoothing
+awsbi                   Two-dimensional Adaptive Weights Smoothing
+awstri                  Tri-dimensional Adaptive Weights Smoothing
+awsuni                  One-dimensional Adaptive Weights Smoothing
+getnubi                 Calculate number of grid points in a bivariate
+                        elliptical neighborhood
+getnutri                Calculate number of grid points in a 3D
+                        ellipsoidal neighborhood

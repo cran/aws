@@ -1,6 +1,6 @@
 Package: aws
-Version: 1.0-1
-Date: 2002-02-13
+Version: 1.0-4
+Date: 2002-04-23
 Title: Adaptive Weights Smoothing
 Author: Joerg Polzehl <polzehl@wias-berlin.de>
 Maintainer: Joerg Polzehl <polzehl@wias-berlin.de>
@@ -12,4 +12,5 @@ Description: The library contains R-functions to perform the
 License: Free for non-commercial use, see the file COPYRIGHT for details.
          This library is Copyright (C) 2000 Weierstrass Institute for 
                                    Applied Analysis and Stochastics. 
+URL: http://www.wias-berlin.de/private/polzehl/adaptive-image-processing.html
 

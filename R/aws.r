@@ -9,7 +9,7 @@
 awsuni_function(y, lambda=3, gamma=1.3, eta =4, s2hat = NULL, kstar =
 length(radii),radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
          (5:8)*64,(5:8)*128,(5:8)*256),rmax=max(radii),
-         graph = F,z0 = NULL, eps = 1e-08, control="dyadic",demomode=F)
+         graph = FALSE,z0 = NULL, eps = 1e-08, control="dyadic",demomode=FALSE)
 {
 # requires  dyn.load("aws.so") 
 #
@@ -23,14 +23,16 @@ length(radii),radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
 #           will be generated in this case)
 #   kstar - number of iterations to perform (set to min(kstar, length(radii)))
 #   radii - radii of neighbourhoods used
-#   graph - logical, if T progress (for each iteration) is illustrated grahically,
-#           if F the program runs until the final estimate is obtained 
+#   graph - logical, if TRUE progress (for each iteration) is illustrated grahically,
+#           if FALSE the program runs until the final estimate is obtained 
 #           (much faster !!!)
 #   z0    - allows for submission of "true" values for illustration puposes only
-#           if graph=T  MSE and MAE are reported for each iteration step
+#           if graph=TRUE  MSE and MAE are reported for each iteration step
 #   eps - stop iteration if ||(yhatnew - yhat)||^2 < eps * sum(s2hat)
 #   control - the control step is performed in either a dyadic sceme
 #           ("dyadic") or using all previous estimates (otherwise)
+#   demomode - only active if graph=TRUE, causes the program to wait after displaying the 
+#           results of an iteration step
 #
         radii <- radii[radii<=rmax]
         kstar <- min(kstar,length(radii))
@@ -44,6 +46,7 @@ length(radii),radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
         newcontr <- numeric(kstar)
         if(control=="dyadic") newcontr[2^(0:(log(kstar)/log(2)))] <- 1
         else newcontr[1:kstar] <- 1
+        cat("Control sceme: ",newcontr,"\n")
         n <- length(y)
         x <- 1:n
         lam0 <- lambda
@@ -51,7 +54,7 @@ length(radii),radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
         gamma <- gamma^2
 # generate a variance estimate if needed
         if(is.null(s2hat))
-                s2hat <- gethomvar(y)
+                s2hat <- (IQR(diff(y))/1.908)^2
 # expand variance estimate in case of homogeneous variance
         if(length(s2hat) == 1)
                 s2hat <- rep(s2hat, n)
@@ -84,7 +87,8 @@ length(radii),radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
                         lines(x, yhat-sqrt(lambda*sk),col=4,lty=2)
                         lines(x, yhat+sqrt(lambda*sk),col=4,lty=2)
                         if(!is.null(z0)) lines(x, yhat, col = 2)
-                        title(paste("yhat  K=", 1, "nu=", 2 * ind[1] - 1))
+                        title(paste("Estimate  Iteration ", 0, 
+			            "  N(U) = ", 2 * ind[1] - 1))
                         ylim <- range(y - yhat)
                         if(!is.null(z0)) ylim <- range(ylim, z0 - yhat)
                         plot(x, y - yhat, ylim = ylim)
@@ -102,7 +106,7 @@ length(radii),radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
         }
         if(graph) {
            if(!is.null(z0))
-                cat("k=", 1, "MSE:", mean((yhat - z0)^2), "MAE:", 
+                cat("Iteration ", 0, "MSE:", mean((yhat - z0)^2), "MAE:", 
                         mean(abs(yhat - z0)), "\n")
            for(k in 2:kstar) {
                 yhatold <- yhat
@@ -127,7 +131,7 @@ length(radii),radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
                 controls <- z$controls
                 skmin <- pmin(skmin, sk)
                 if(!is.null(z0))
-                cat("k=", k, "MSE:", mean((yhat - z0)^2), "MAE:", 
+                cat("Iteration ", k-1, "MSE:", mean((yhat - z0)^2), "MAE:", 
                         mean(abs(yhat - z0)), "\n")
                 plot(x, y)
                 if(!is.null(z0)) lines(x, z0, col = 3)
@@ -135,7 +139,7 @@ length(radii),radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
                 lines(x, yhat-sqrt(lambda*sk),col=4,lty=2)
                 lines(x, yhat+sqrt(lambda*sk),col=4,lty=2)
                 if(!is.null(z0)) lines(x, yhat, col = 2)
-                title(paste("yhat  K=", k, "nu=", 2 * ind[k] - 1))
+                title(paste("Estimate  Iteration ", k-1, "  N(U) = ", 2 * ind[k] - 1))
                 ylim <- range(y - yhat)
                 if(!is.null(z0)) ylim <- range(ylim, z0 - yhat)
                 plot(x, y - yhat, ylim = ylim)
@@ -191,8 +195,8 @@ length(radii),radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
 
 awsbi_function(y, lambda=3, gamma=1.3, eta = 4, 
      s2hat = NULL, kstar = length(radii), rmax=max(radii),
-     radii=c((1:8)/2,4.4,5.,(6:10),(6:10)*2), graph = F, 
-     u0 = NULL,control="dyadic",demomode=F, colors=gray((0:255)/255))
+     radii=c((1:8)/2,4.4,5.,(6:10),(6:10)*2), graph = FALSE, 
+     u0 = NULL,control="dyadic",demomode=FALSE, colors=gray((0:255)/255))
 {
 # requires  dyn.load("aws.so") 
 #
@@ -206,15 +210,16 @@ awsbi_function(y, lambda=3, gamma=1.3, eta = 4,
 #           will be generated in this case)
 #   kstar - number of iterations to perform (set to min(kstar, length(radii)))
 #   radii - radii of neighbourhoods used
-#   graph - logical, if T progress (for each iteration) is illustrated grahically,
-#           if F the program runs until the final estimate is obtained 
+#   graph - logical, if TRUE progress (for each iteration) is illustrated grahically,
+#           if FALSE the program runs until the final estimate is obtained 
 #           (much faster !!!)
 #   colors - color sceme to be used for images
 #   u0    - allows for submission of "true" values for illustration puposes only
-#           if graph=T  MSE and MAE are reported for each iteration step
-#   eps - stop iteration if ||(yhatnew - yhat)||^2 < eps * sum(s2hat)
+#           if graph=TRUE  MSE and MAE are reported for each iteration step
 #   control - the control step is performed in either a dyadic sceme
 #           ("dyadic") or using all previous estimates (otherwise)
+#   demomode - only active if graph=TRUE, causes the program to wait after displaying the 
+#           results of an iteration step
 #
         storage.mode(y) <- "single"
         storage.mode(s2hat) <- "single"
@@ -226,7 +231,7 @@ awsbi_function(y, lambda=3, gamma=1.3, eta = 4,
         newcontr <- numeric(kstar)
         if(control=="dyadic") newcontr[2^(0:(log(kstar)/log(2)))] <- 1
         else newcontr[1:kstar] <- 1
-        print(newcontr)
+        cat("Control sceme: ",newcontr,"\n")
         dy <- dim(y)
         if(is.null(dy)||length(dy)>2) stop("y should have dimension 2")
         nx <- dy[1]
@@ -242,7 +247,7 @@ awsbi_function(y, lambda=3, gamma=1.3, eta = 4,
         lambda <- lambda * 0.3
 # generate a variance estimate if needed
         if(length(s2hat) == 0) {
-           s2hat <- gethomvar(y)
+           s2hat <- (IQR(diff(y))/1.908)^2
            cat("Estimated variance:",s2hat,"\n")
            }
 # expand s2hat in case of homogeneous variance
@@ -259,7 +264,7 @@ awsbi_function(y, lambda=3, gamma=1.3, eta = 4,
         if(!is.null(u0)) {
                 l2[1] <- mean((yhat - u0)^2)
                 r2[1] <- mean(abs(yhat - u0))
-                cat("k=", 1, "nu=", iii[1], "MSE", l2[1], 
+                cat("Iteration", 0, "nu=", iii[1], "MSE", l2[1], 
                                 "MAE", r2[1], "\n")
         }
         kiiinit <- kiii[1]
@@ -305,11 +310,11 @@ awsbi_function(y, lambda=3, gamma=1.3, eta = 4,
                         image(matrix(y, ncol = ny),col=colors)
                         title("original image")
                         image(matrix(yhat, ncol = ny),zlim=range(y),col=colors)
-                        title(paste("estimate  K=", k, "nu=", iii[k]))
+                        title(paste("Estimate  Iteration ", k-1, "  N(U) = ", iii[k]))
                         image(matrix(log(sk), ncol = ny),col=colors)
-                        title(paste("log(var(yhat))","Mean Var:",signif(mean(sk),3)))
+                        title(paste("log(var(yhat))"," Mean Var:",signif(mean(sk),3)))
                 if(!is.null(u0))
-                        cat("k=", k, "nu=", iii[k], "MSE", l2[k], 
+                        cat("Iteration", k-1, "nu=", iii[k], "MSE", l2[k], 
                                 "MAE", r2[k], "\n")
             if(demomode) {
             cat("press ENTER to continue")
@@ -343,7 +348,7 @@ awsbi_function(y, lambda=3, gamma=1.3, eta = 4,
                 if(!is.null(u0)){
                         l2[kstar] <- mean((z$yhat - u0)^2)
                         r2[kstar] <- mean(abs(z$yhat - u0))
-                        cat("k=", kstar, "nu=", iii[kstar], "MSE", l2[kstar], 
+                        cat("Iteration ", kstar-1, "nu=", iii[kstar], "MSE", l2[kstar], 
                                 "MAE", r2[kstar], "\n")
                         }
         list(yhat = matrix(as.single(z$yhat), ncol = ny), 
@@ -401,14 +406,15 @@ awstri <- function(y, lambda = 3, gamma = 1.3 , eta = 4, s2hat = NULL,
         newcontr <- numeric(kstar)
         if(control=="dyadic") newcontr[2^(0:(log(kstar)/log(2)))] <- 1
         else newcontr[1:kstar] <- 1
+	cat("Control sceme: ", newcontr,"\n")
         lambda <- lambda^2
         gamma <- gamma^2
 #         kern <- exp( - seq(0, 6, 0.3)/1.44)
         kern <- exp( - seq(0, 6, 0.3))
         lambda <- lambda*.3
         n <- nx * ny * nz
-        if(length(s2hat) == 0) s2hat <- gethomvar(y)
-        if(length(as.vector(s2hat)) == 1) homogeneous_T
+        if(length(s2hat) == 0) s2hat <- (IQR(diff(y))/1.908)^2
+        if(length(as.vector(s2hat)) == 1) homogeneous_TRUE
         #now precompute neighbourhoods
         yhat <- as.single(y)
         if(homogeneous) minsk <- sk <- array(s2hat,dim(y))
@@ -465,21 +471,6 @@ awstri <- function(y, lambda = 3, gamma = 1.3 , eta = 4, s2hat = NULL,
 }
 
 
-
-############################################################################
-#
-# get homogeneous variance estimate for local constant model
-#
-############################################################################
-
-gethomvar <- function(y){
-# includes multiplicative bias correction 
-seps<-sqrt(IQR(diff(as.vector(y)))^2/3.6)
-ystar<-rnorm(y,y,seps)
-sedq<-IQR(diff(as.vector(ystar)))^2/3.6
-seps^4/(sedq-seps^2)
-}
-
 ############################################################################
 #
 # get number of pixels in bivariate neighbourhoods
@@ -530,4 +521,3 @@ getnutri <- function(radiusq, weights)
     stop("This version for R 1.00 or later")
   library.dynam("aws", pkg, lib)
 }
-
