@@ -16,13 +16,11 @@ getnutri(radiusq, weights)
 \details{
 }
 \value{
-  Returns number of grid points (i,j,k) with  $ w[1] i^2 + w[2] j^2 + w[3] k^2 <= radiusq $
+  Returns number of grid points (i,j,k) with  \code{ w[1] i^2 + w[2] j^2 + w[3] k^2 <= radiusq }
 }
 \references{}
-\author{J\"org Polzehl \email{polzehl@wias-berlin.de}}
-\note{ ~~further notes~~ }
+\author{Joerg Polzehl \email{polzehl@wias-berlin.de}}
 
- ~Make other sections like WARNING with \section{WARNING }{....} ~
 
 \seealso{\code{\link{awstri}}}
 

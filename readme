@@ -1,0 +1,88 @@
+AWS is a library containing functions to perform 
+structural adaptive smoothing (adaptive weights smoothing) 
+as introduced in 
+
+[1] Polzehl, J. and Spokoiny, S. (2000). Adaptive Weights Smoothing with 
+applications to image restoration}, J.R.Statist.Soc. B, 62, Part 2, pp. 
+335-354.
+
+[2] Polzehl, J. and Spokoiny, S. (2002). Varying coefficient regression 
+modeling by adaptive weights smoothing, Manuscript.
+
+[3] Polzehl, J. and Spokoiny, S. (2002b). Local likelihood modelling by 
+adaptive  weights smoothing, WIAS-Preprint 787.
+     
+The third paper is and the second paper will be available as WIAS - Preprints 
+from 
+
+URL: http//www.wias-berlin.de/private/polzehl/papers.html
+
+and 
+
+URL: http://www.wias-berlin.de/publications/index.pl?preprints
+
+soon. 
+
+Changes from version 1.0.x:
+
+- the license has been changed to GPL version 2 or newer
+
+- the procedures from [1] have been thoroughly revised. The functionality of
+  awsbi, awstri and awsuni has been integrated into the new function aws. 
+  The three functions are still provided but their use is depreciated. Analog
+  results can be obtained using function aws with parameter lkern="Uniform".
+
+- the function aws is based on the procedure introduced in [2]. It is designed 
+  for general regression models with additive sub-Gaussian errors. The 
+  structural assumption used is that the underlying regression function can be 
+  well approximated by a local polynomial model of specified degree. The 
+  function provides the following additional functionality:
+
+   - use of a general location kernel 
+   
+   - use of local polynomial models, arbitrary degree in 1 dimensional 
+     problems, up to quadratic models in 2-D problems on a grid, and local 
+     linear in 3-D problems on a grid and for a general fixed design.
+     
+Please see [2] and the help-pages for function aws for details.
+   
+- the function laws implements the likelihood based approach proposed in [3]. 
+The response Y is assumed to be distributed according to a distribution F 
+that belongs to a 1-parameter exponential family with parameter theta(x) 
+depending on the values of a design variable x. The approach uses the 
+structural assumption that the function theta(x) can be locally approximated 
+by constant.
+Currently the following models are implemented:
+
+    - Poisson-distribution
+    
+    - Bernoulli-distribution
+    
+    - Exponential-distribution
+    
+    - Gaussian-distribution with fixed variance (this coincides with the local 
+      constant models in function aws)
+            
+    - Volatility models (Gaussian distribution with expectation 0 and 
+      standard deviation theta)
+
+    - Weibull-distribution
+    
+- the function awsdens allows for 1D, 2D and 3D density estimation based on 
+the assumption that the density can be reasonably approximated by a local 
+constant function. This may be of interest mainly in 2D and 3D situations to 
+describe the support of the density.
+The approach is based on the asymptotic equivalence of density estimation and 
+Poisson regression and employs the likelihood approach to Poisson regression 
+provided with function laws. See [3] for details.
+
+- the function awstindex provides an estimate of the tail-index of a 
+univariate distribution. See again [3] for details.
+
+Joerg Polzehl
+email: polzehl@wias-berlin.de
+URL: http://www.wias-berlin.de/private/polzehl
+
+
+
+

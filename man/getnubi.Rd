@@ -11,14 +11,14 @@ getnubi(radiusq, weights)
 %- maybe also `usage' for other objects documented here.
 \arguments{
   \item{radiusq}{ Square of radius }
-  \item{weights}{ axis weights }
+  \item{weights}{ axis weights \code{w}}
 }
 \details{
 }
 \value{
-  Returns number of grid points (i,j) with  $ w[1] i^2 + w[2] j^2 <= radiusq $
+  Returns number of grid points (i,j) with   \code{w[1] i^2 + w[2] j^2 <= radiusq }
 }
-\author{J\"org Polzehl \email{polzehl@wias-berlin.de}}
+\author{Joerg Polzehl \email{polzehl@wias-berlin.de}}
 \seealso{\code{\link{awstri}}}
 \examples{
 }

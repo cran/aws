@@ -1,10 +1,10 @@
 \name{awsbi}
 \alias{awsbi}
 \title{Two-dimensional Adaptive Weights Smoothing}
-\description{Performes two dimensional Adaptive Weigths Smoothing}
+\description{Performes two dimensional Adaptive Weigths Smoothing (depreciated version, use aws instead)}
 \usage{awsbi(y, lambda=3, gamma=1.3, eta =4, s2hat = NULL, kstar = length(radii),
              rmax=max(radii), radii = c((1:8)/2,4.4,5.,(6:10),(6:10)*2), 
-             graph = FALSE,u0 = NULL, control="dyadic", demomode=FALSE, 
+             graph = FALSE, u0 = NULL, control="dyadic", demomode=FALSE, 
              colors=gray((0:255)/255))}
 \arguments{
 \item{y}{matrix of observed values}
@@ -40,12 +40,14 @@ weights)}
 \item{nu}{maximal number of design points in neighborhood used}
 \item{args}{main arguments supplied to awsbi}
 }
-\references{Polzehl, J. and Spokoiny, S. (2000). Adaptive Weights Smoothing 
+\references{Polzehl, J. and Spokoiny, S. (2000). \emph{Adaptive Weights Smoothing 
 with applications
-to image restoration. J.R.Statist.Soc. B, 62, Part 2, pp. 335-354}
+to image restoration}, J.R.Statist.Soc. B, 62, Part 2, pp. 335-354}
 \note{The function assumes that the data are given on a 2D-grid 
-corresponding to the dimensionality of y}
-\author{J\"org Polzehl \email{polzehl@wias-berlin.de}}
+corresponding to the dimensionality of y. 
+This function is superseded by function aws and will be 
+removed in the next mayor version of the package.}
+\author{Joerg Polzehl \email{polzehl@wias-berlin.de}}
 \seealso{\code{\link{awsuni}},\code{\link{awstri}}}
 
 \examples{
@@ -67,7 +69,8 @@ w0[((xy[2,]-225)^2+(xy[1,]-225)^2)+1*(xy[2,]-225)*(xy[1,]-225)<=400]<- 0
 w0[((xy[2,]-30)^2+(xy[1,]-30)^2)<=256]<-0
 sigma<-.25
 y<-w0+rnorm(w0,0,sigma)
-yhat<-awsbi(y,graph=TRUE,rmax=8)
+#  increase rmax for better results
+yhat<-awsbi(y,rmax=5)
 par(mfrow=c(1,3))
 image(y,col=gray((0:255)/255))
 title("Noisy image")

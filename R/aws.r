@@ -6,7 +6,7 @@
 #           J. Polzehl 2000
 ############################################################################
 
-awsuni_function(y, lambda=3, gamma=1.3, eta =4, s2hat = NULL, kstar =
+awsuni <- function(y, lambda=3, gamma=1.3, eta =4, s2hat = NULL, kstar =
 length(radii),radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
          (5:8)*64,(5:8)*128,(5:8)*256),rmax=max(radii),
          graph = FALSE,z0 = NULL, eps = 1e-08, control="dyadic",demomode=FALSE)
@@ -88,7 +88,7 @@ length(radii),radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
                         lines(x, yhat+sqrt(lambda*sk),col=4,lty=2)
                         if(!is.null(z0)) lines(x, yhat, col = 2)
                         title(paste("Estimate  Iteration ", 0, 
-			            "  N(U) = ", 2 * ind[1] - 1))
+                        "  N(U) = ", 2 * ind[1] - 1))
                         ylim <- range(y - yhat)
                         if(!is.null(z0)) ylim <- range(ylim, z0 - yhat)
                         plot(x, y - yhat, ylim = ylim)
@@ -193,7 +193,7 @@ length(radii),radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
 #           J. Polzehl 2000
 ############################################################################
 
-awsbi_function(y, lambda=3, gamma=1.3, eta = 4, 
+awsbi <- function(y, lambda=3, gamma=1.3, eta = 4, 
      s2hat = NULL, kstar = length(radii), rmax=max(radii),
      radii=c((1:8)/2,4.4,5.,(6:10),(6:10)*2), graph = FALSE, 
      u0 = NULL,control="dyadic",demomode=FALSE, colors=gray((0:255)/255))
@@ -406,7 +406,7 @@ awstri <- function(y, lambda = 3, gamma = 1.3 , eta = 4, s2hat = NULL,
         newcontr <- numeric(kstar)
         if(control=="dyadic") newcontr[2^(0:(log(kstar)/log(2)))] <- 1
         else newcontr[1:kstar] <- 1
-	cat("Control sceme: ", newcontr,"\n")
+    cat("Control sceme: ", newcontr,"\n")
         lambda <- lambda^2
         gamma <- gamma^2
 #         kern <- exp( - seq(0, 6, 0.3)/1.44)
@@ -414,7 +414,7 @@ awstri <- function(y, lambda = 3, gamma = 1.3 , eta = 4, s2hat = NULL,
         lambda <- lambda*.3
         n <- nx * ny * nz
         if(length(s2hat) == 0) s2hat <- (IQR(diff(y))/1.908)^2
-        if(length(as.vector(s2hat)) == 1) homogeneous_TRUE
+        if(length(as.vector(s2hat)) == 1) homogeneous <- TRUE
         #now precompute neighbourhoods
         yhat <- as.single(y)
         if(homogeneous) minsk <- sk <- array(s2hat,dim(y))
@@ -477,7 +477,7 @@ awstri <- function(y, lambda = 3, gamma = 1.3 , eta = 4, s2hat = NULL,
 #
 ############################################################################
 
-getnubi_function(radiusq, weights)
+getnubi <- function(radiusq, weights)
 {
         nu <- numeric(length(radiusq))
         nu <- .Fortran("getnubi",

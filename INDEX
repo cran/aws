@@ -1,7 +1,8 @@
-awsbi                   Two-dimensional Adaptive Weights Smoothing
-awstri                  Tri-dimensional Adaptive Weights Smoothing
-awsuni                  One-dimensional Adaptive Weights Smoothing
-getnubi                 Calculate number of grid points in a bivariate
-                        elliptical neighborhood
-getnutri                Calculate number of grid points in a 3D
-                        ellipsoidal neighborhood
+aws                     Local polynomial Adaptive Weights Smoothing for regression with additive errors 
+awsbi                   Two-dimensional Adaptive Weights Smoothing (depreciated)
+awstri                  Tri-dimensional Adaptive Weights Smoothing (depreciated)
+awsuni                  One-dimensional Adaptive Weights Smoothing (depreciated)
+laws                    Likelihood based local constant Adaptive Weights Smoothing (Gaussian, Poisson, 
+                                 Exponential, Binary response, Volatility-models)
+awsdens                 Local constant density estimation
+awstindex               Tail index estimation
