@@ -1,5 +1,5 @@
 #
-#    R - function  aws  for  Adaptive Weights Smoothing (AWS)             
+#    R - function  aws  for  Adaptive Weights Smoothing (AWS)
 #    in regression models with additive sub-Gaussian errors               
 #    local constant and local polynomial approach                         
 #
@@ -25,7 +25,7 @@
 #
 aws <- function(y,x=NULL,p=0,sigma2=NULL,qlambda=NULL,eta=0.5,tau=NULL,
                 lkern="Triangle",hinit=NULL,hincr=NULL,hmax=10,NN=FALSE,
-                u=NULL,graph=FALSE,demo=FALSE,symmetric=NULL)
+                u=NULL,graph=FALSE,demo=FALSE,symmetric=NULL,wghts=NULL)
 { 
 #
 #    first check arguments and initialize                                 
@@ -35,17 +35,18 @@ if(p>0) symmetric <- FALSE
 if(is.null(symmetric)) symmetric <- FALSE 
 if(is.null(qlambda)) {
 if(p>5) return("no default for qlambda for p>5")
-qlambda <- switch(p+1,.966,.65,.96,.96,.96,.96)
+qlambda <- switch(p+1,.966,.92,.92,.92,.92,.92)
 if(symmetric==TRUE) qlambda <- .985
 }
 if(qlambda>=1 || qlambda<.6) return("Inappropriate value of qlambda")
 if(eta<0 || eta>=1) return("Inappropriate value of eta")
 if(demo&& !graph) graph <- TRUE
 taudefault <- NULL
-# now check which procedure is appropriate                                
-gridded <- is.null(x) 
+# now check which procedure is appropriate
+gridded <- is.null(x)
 if(gridded){
-#  this is the version on a grid                                          
+#  this is the version on a grid
+if(is.null(hinit)||hinit<=0) hinit <- 1
 dy <- dim(y)
 if(is.null(dy)) {
    form <- "uni"
@@ -56,6 +57,11 @@ if(is.null(dy)) {
 if(length(dy)==2){
    form <- "bi"
    ddim  <- 2
+if(is.null(wghts)) wghts<-c(1,1)
+hinit<-hinit/wghts[1]
+hmax<-hmax/wghts[1]
+wghts<-(wghts[2]/wghts[1])^2
+#  only use a wght for the second component
 n1 <- dy[1]
 n2 <- dy[2]
 n <- n1*n2
@@ -65,24 +71,29 @@ dp1 <- switch(p+1,1,3,6)
 if(length(dy)==3){
    form <- "tri"
    ddim  <- 3
+if(is.null(wghts)) wghts<-c(1,1,1)
+hinit<-hinit/wghts[1]
+hmax<-hmax/wghts[1]
+wghts<-(wghts[2:3]/wghts[1])^2
+#  only use a wght for the second and third component
 n1 <- dy[1]
 n2 <- dy[2]
 n3 <- dy[3]
 n <- n1*n2*n3
 dp1 <- 3*p+1
 }
-if(length(dy)>3) 
+if(length(dy)>3)
    return("AWS for more than 3 dimensional grids is not implemented")
-} else { 
+} else {
 # not gridded
-dx <- dim(x)   
+dx <- dim(x)
 ddim <- 1
 if(is.null(dx)) {
 #
-#    order data by order of x                                             
+#    order data by order of x
 #
     form <- "uni"
-    n <- length(x) 
+    n <- length(x)
     if(n!=length(y)) return("incompatible lengths of x and y")
     ox <- order(x)
     x <- x[ox]
@@ -97,19 +108,19 @@ if(is.null(dx)) {
       }
    form <- "multi"
    if(n!=length(y)) return("incompatible dimensions of x and y")
-   weights <- rep(1,px)
+   if(is.null(wghts)||length(wghts)!=px) wghts <- rep(1,px)
    dp1 <- 1+p*px
    taudefault <- 1.5*3^px
 #
-#  now generate matrix of nearest neighbors                               
-#  hmax is interpreted as maximal number of neighbors                     
+#  now generate matrix of nearest neighbors
+#  hmax is interpreted as maximal number of neighbors
 #
    if(NN){
    ihmax <- trunc(hmax)
    if(ihmax>n) ihmax <- n
    neighbors <- matrix(0,ihmax,n)
    for (i in 1:n) {
-      if(px==1) adist <- (x-x[i])^2 else adist <- weights%*%((x-x[,i])^2)
+      if(px==1) adist <- (x-x[i])^2 else adist <- wghts%*%((x-x[,i])^2)
       neighbors[,i] <- order(adist)[1:ihmax]
       }
    } else {
@@ -117,7 +128,7 @@ if(is.null(dx)) {
    ddim <- px
    neighbors <- distmat <- matrix(0,n,n)
    for (i in 1:n) {
-      if(px==1) adist <- (x-x[i])^2 else adist <- weights%*%((x-x[,i])^2)
+      if(px==1) adist <- (x-x[i])^2 else adist <- wghts%*%((x-x[,i])^2)
       od <- order(adist)
       distmat[,i] <- adist[od]
       neighbors[,i] <- od
@@ -190,18 +201,17 @@ if(gridded &&  form=="uni" && p==0){
 ###                                                                       
 ###              gridded     uni    p=0                                   
 ###                                                                       
-###           this should run a little faster than the nongridded version 
+###           this should run a little faster than the nongridded version
 ###                                                                       
 bi <- ai <- theta <- numeric(n)
-if(is.null(hinit)||hinit<1) hinit <- 1
-#  first initialize                                                       
+#  first initialize
 z <- .Fortran("iawsuni",
               as.double(y),
               as.integer(n),
               as.double(hinit),
               bi=as.double(bi),
               ai=as.double(ai),
-              as.double(kernl))[c("ai","bi")]
+              as.double(kernl),PACKAGE="aws")[c("ai","bi")]
 bi <- z$bi
 ai <- z$ai
 theta <- ai/bi
@@ -217,11 +227,11 @@ if(!is.null(u)) cat("bandwidth: ",signif(hinit,3),"   MSE: ",
                     mean((theta-u)^2),"   MAE: ",mean(abs(theta-u)),"\n")
 if(demo) readline("Press return")
 }
-# now run aws-cycle                                                       
+# now run aws-cycle
 hakt <- hinit*hincr
 if(graph){
 #
-#   run single steps to display intermediate results                      
+#   run single steps to display intermediate results
 #
 while(hakt<=hmax){
 z <- .Fortran("lawsuni",
@@ -234,7 +244,7 @@ z <- .Fortran("lawsuni",
               ai=as.double(ai),
               as.double(kernl),
               as.double(kerns),
-              as.logical(symmetric))[c("ai","bi")]
+              as.logical(symmetric),PACKAGE="aws")[c("ai","bi")]
 ai <- (1-eta)*z$ai + eta * ai
 bi <- (1-eta)*z$bi + eta * bi
 theta  <- ai / bi
@@ -267,25 +277,24 @@ theta <- .Fortran("gawsuni",
               as.double(kernl),
               as.double(kerns),
               as.double(bi),
-              as.double(ai),
-              as.logical(symmetric))$theta
+              as.logical(symmetric),PACKAGE="aws")$theta
 }
 }
       if( form=="uni" && (p>0 || (!gridded && p==0)) ){
-###                                                                       
-###                        uni     p>=0                                   
-###                                                                       
-if(gridded) x <- 1:length(y) 
+###
+###                        uni     p>=0
+###
+if(gridded) x <- 1:length(y)
 dp1 <- p+1
 dp2 <- p+dp1
 bi <- matrix(0,dp2,n)
 theta <- ai <- matrix(0,dp1,n)
 dxp <- max(diff(x,p+1))*(1+1.e-8)
 if(is.null(hinit)||hinit<dxp) hinit <- dxp
-#   generate binomial coefficients                                        
+#   generate binomial coefficients
 cb <- matrix(0,dp1,dp1)
 for(i in (1:dp1)) cb[i:dp1,i] <- choose((i:dp1)-1,i-1)
-#  first initialize                                                       
+#  first initialize
 z <- .Fortran("ipawsuni",
               as.integer(n),
               as.integer(dp1),
@@ -297,7 +306,7 @@ z <- .Fortran("ipawsuni",
               ai=as.double(ai),
               theta=as.double(theta),
               as.double(kernl),
-              double(dp1*dp1))[c("ai","bi","theta")]
+              double(dp1*dp1),PACKAGE="aws")[c("ai","bi","theta")]
 theta <- matrix(z$theta,dp1,n)
 bi <- bi0 <- matrix(z$bi,dp2,n)
 ai <- z$ai
@@ -310,11 +319,11 @@ title(paste("Reconstruction  h=",signif(hinit,3)))
 plot(x,bi[1,],type="l")
 title("Sum of weights")
 }
-if(!is.null(u)) 
+if(!is.null(u))
 cat("bandwidth: ",signif(hinit,3),"   MSE: ",mean((theta[1,]-u)^2),
       "   MAE: ",mean(abs(theta[1,]-u)),"\n")
 if(demo) readline("Press return")
-# now run aws-cycle                                                       
+# now run aws-cycle
 hakt <- hinit*hincr
 while(hakt<=hmax){
 z <- .Fortran("lpawsuni",
@@ -342,7 +351,7 @@ z <- .Fortran("lpawsuni",
               double(dp1),
               double(dp2),
               double(dp1),
-              as.logical(symmetric))[c("ai","bi","bi0")]
+              as.logical(symmetric),PACKAGE="aws")[c("ai","bi","bi0")]
     ai <- (1-eta)*z$ai + eta * ai
     bi <- matrix((1-eta)*z$bi + eta * bi,dp2,n)
     bi0 <- (1-eta)*z$bi0 + eta * bi0
@@ -353,7 +362,7 @@ z <- .Fortran("lpawsuni",
                   as.double(ai),
                   as.double(bi),
                   theta=as.double(theta),
-                  double(dp1*dp1))$theta,dp1,n)
+                  double(dp1*dp1),PACKAGE="aws")$theta,dp1,n)
 if(graph){
 plot(x,y,ylim=range(y,theta[1,]),col=3)
 if(!is.null(u)) lines(x,u,col=2)
@@ -384,7 +393,8 @@ z <- .Fortran("iawsbi",
               as.double(hinit),
               bi=as.double(bi),
               ai=as.double(ai),
-              as.double(kernl))[c("ai","bi")]
+              as.double(kernl),
+              as.double(wghts),PACKAGE="aws")[c("ai","bi")]
 bi <- matrix(z$bi,n1,n2)
 ai <- matrix(z$ai,n1,n2)
 theta <- ai/bi
@@ -400,11 +410,11 @@ if(!is.null(u)) cat("bandwidth: ",signif(hinit,3),"   MSE: ",
       mean((theta-u)^2),"   MAE: ",mean(abs(theta-u)),"\n")
 if(demo) readline("Press return")
 }
-# now run aws-cycle                                                       
+# now run aws-cycle
 hakt <- hinit*hincr
 if(graph){
 #
-#   run single steps to display intermediate results                      
+#   run single steps to display intermediate results
 #
 while(hakt<=hmax){
 z <- .Fortran("lawsbi",
@@ -418,7 +428,8 @@ z <- .Fortran("lawsbi",
               ai=as.double(ai),
               as.double(kernl),
               as.double(kerns),
-              as.logical(symmetric))[c("ai","bi")]
+              as.logical(symmetric),
+              as.double(wghts),PACKAGE="aws")[c("ai","bi")]
 ai <- (1-eta)*z$ai + eta * ai
 bi <- matrix((1-eta)*z$bi + eta * bi,n1,n2)
 theta  <- matrix(ai / bi, n1, n2)
@@ -436,7 +447,7 @@ gc()
 }
 } else
 {
-#   run all iterations in one call                                        
+#   run all iterations in one call
 theta <- .Fortran("gawsbi",
               as.double(y),
               as.integer(n1),
@@ -452,23 +463,22 @@ theta <- .Fortran("gawsbi",
               as.double(kernl),
               as.double(kerns),
               as.double(bi),
-              as.double(ai),
-              as.logical(symmetric))$theta
+              as.logical(symmetric),
+              as.double(wghts),PACKAGE="aws")$theta
 theta <- matrix(theta,n1,n2)
 }
 }
       if(gridded &&  form=="bi" && p>0){
-###                                                                       
-###             gridded      bi    p=1,2                                  
-###                                                                       
+###
+###             gridded      bi    p=1,2
+###
 dp1 <- switch(p+1,1,3,6)
 dp2 <- switch(p+1,1,6,15)
 if(symmetric) dpm <- dp1*(dp1+1)/2 else dpm <- 1
 bi <- matrix(0,dp2,n)
-di <- matrix(0,dpm,n)
 theta <- ai <- matrix(0,dp1,n)
-ind <- matrix(c(1, 2, 3, 4, 5, 6, 
-                2, 4, 5, 7, 8, 9, 
+ind <- matrix(c(1, 2, 3, 4, 5, 6,
+                2, 4, 5, 7, 8, 9,
                 3, 5, 6, 8, 9,10,
                 4, 7, 8,11,12,13,
                 5, 8, 9,12,13,14,
@@ -489,11 +499,11 @@ z <- .Fortran("ipawsbi",
               double(dp1*dp1),
               double(dp2),
               double(dp1),
-              as.integer(ind))[c("ai","bi","theta")]
+              as.integer(ind),
+              as.double(wghts),PACKAGE="aws")[c("ai","bi","theta")]
 theta <- array(z$theta,c(dp1,n1,n2))
 bi <- bi0 <- array(z$bi,c(dp2,n1,n2))
 ai <- z$ai
-di <- di0 <- z$di
 if(graph){
 par(mfrow=c(1,3),mar=c(1,1,3,.25),mgp=c(2,1,0))
 image(y,col=gray((0:255)/255),xaxt="n",yaxt="n")
@@ -503,7 +513,7 @@ title(paste("Reconstruction  h=",signif(hinit,3)))
 image(bi[1,,],col=gray((0:255)/255),xaxt="n",yaxt="n")
 title("Sum of weights")
 }
-if(!is.null(u)) 
+if(!is.null(u))
 cat("bandwidth: ",signif(hinit,3),"   MSE: ",mean((theta[1,,]-u)^2),
     "   MAE: ",mean(abs(theta[1,,]-u)),"\n")
 if(demo) readline("Press return")
@@ -536,9 +546,10 @@ z <- .Fortran("lpawsbi",
               double(dp2),
               double(dp1),
               as.logical(symmetric),
-              as.integer(ind))[c("ai","bi","bi0")]
+              as.integer(ind),
+              as.double(wghts),PACKAGE="aws")[c("ai","bi","bi0")]
     ai <- (1-eta)*z$ai + eta * ai
-    bi <- array((1-eta)*z$bi + eta * bi,c(dp2,n1,n2)) 
+    bi <- array((1-eta)*z$bi + eta * bi,c(dp2,n1,n2))
     bi0 <- (1-eta)*z$bi0 + eta * bi0
     theta <- array(.Fortran("mpawsbi",
                   as.integer(n),
@@ -548,7 +559,7 @@ z <- .Fortran("lpawsbi",
                   as.double(bi),
                   theta=as.double(theta),
                   double(dp1*dp1),
-                  as.integer(ind))$theta,c(dp1,n1,n2))
+                  as.integer(ind),PACKAGE="aws")$theta,c(dp1,n1,n2))
 if(graph){
 par(mfrow=c(1,3),mar=c(1,1,3,.25),mgp=c(2,1,0))
 image(y,col=gray((0:255)/255),xaxt="n",yaxt="n")
@@ -569,7 +580,6 @@ gc()
 ###                                                                       
 ###             gridded      tri   p=0                                    
 ###                                                                       
-bi <- ai <- theta <- array(0,c(n1,n2,n3))
 if(is.null(hinit)||hinit<1) hinit <- 1
 #  first initialize
 z <- .Fortran("iawstri",
@@ -578,12 +588,12 @@ z <- .Fortran("iawstri",
               as.integer(n2),
               as.integer(n3),
               as.double(hinit),
-              bi=as.double(bi),
-              ai=as.double(ai),
-              as.double(kernl))[c("ai","bi")]
+              bi=double(n),
+              ai=double(n),
+              as.double(kernl),
+              as.double(wghts),PACKAGE="aws")[c("ai","bi")]
 bi <- array(z$bi,c(n1,n2,n3))
-ai <- array(z$ai,c(n1,n2,n3))
-theta <- ai/bi
+theta <- array(z$ai/bi,c(n1,n2,n3))
 if(graph){
 par(mfrow=c(1,3),mar=c(1,1,3,.25),mgp=c(2,1,0))
 image(y[,,1],col=gray((0:255)/255),xaxt="n",yaxt="n")
@@ -596,11 +606,11 @@ if(!is.null(u)) cat("bandwidth: ",signif(hinit,3),"   MSE: ",
                     mean((theta-u)^2),"   MAE: ",mean(abs(theta-u)),"\n")
 if(demo) readline("Press return")
 }
-# now run aws-cycle                                                       
+# now run aws-cycle
 hakt <- hinit*hincr
 if(graph){
 #
-#   run single steps to display intermediate results                      
+#   run single steps to display intermediate results
 #
 while(hakt<=hmax){
 z <- .Fortran("lawstri",
@@ -612,13 +622,16 @@ z <- .Fortran("lawstri",
               as.double(lamakt),
               as.double(theta),
               bi=as.double(bi),
-              ai=as.double(ai),
+              ai=double(n),
               as.double(kernl),
               as.double(kerns),
-              as.logical(symmetric))[c("ai","bi")]
+              as.logical(symmetric),
+              as.double(wghts),PACKAGE="aws")[c("ai","bi")]
 ai <- (1-eta)*z$ai + eta * bi * theta
 bi <- array((1-eta)*z$bi + eta * bi,c(n1,n2,n3))
 theta  <- array(ai / bi, c(n1,n2,n3))
+rm(ai)
+gc()
 image(y[,,1],col=gray((0:255)/255),xaxt="n",yaxt="n")
 title("Observed Image")
 image(theta[,,1],col=gray((0:255)/255),zlim=range(y),xaxt="n",yaxt="n")
@@ -633,8 +646,8 @@ gc()
 }
 } else
 {
-#   run all iterations in one call                                        
-theta <- .Fortran("gawstri",
+#   run all iterations in one call
+theta <- array(.Fortran("gawstri",
               as.double(y),
               as.integer(n1),
               as.integer(n2),
@@ -645,20 +658,19 @@ theta <- .Fortran("gawstri",
               as.double(lamakt),
               as.double(eta),
               theta=as.double(theta),
-              bi=as.double(bi),
-              ai=as.double(ai),
+              as.double(bi),
+              double(n),
               as.double(kernl),
               as.double(kerns),
               as.double(bi),
-              as.double(ai),
-              as.logical(symmetric))$theta
-theta <- array(theta, c(n1,n2,n3))
+              as.logical(symmetric),
+              as.double(wghts),PACKAGE="aws")$theta, c(n1,n2,n3))
 }
 }
       if( form=="multi" ){
-###                                                                       
-###                        multi (nongridded)    p==0 or p==1             
-###                                                                       
+###
+###                        multi (nongridded)    p==0 or p==1
+###
 dp1 <- 1+p*px
 dp2 <- dp1*(dp1+1)/2
 bi <- matrix(0,dp2,n)
@@ -684,17 +696,17 @@ z <- .Fortran("ipawsmnn",
               as.double(kernl),
               double(dp1*dp1),
               double(dp1),
-              info=as.integer(info))[c("ai","bi","theta","info")]
-info <- z$info 
+              info=as.integer(info),PACKAGE="aws")[c("ai","bi","theta","info")]
+info <- z$info
 hinit <- hinit+1
 }
 theta <- matrix(z$theta,dp1,n)
 bi <- bi0 <- matrix(z$bi,dp2,n)
 ai <- z$ai
-if(!is.null(u)) 
+if(!is.null(u))
 cat("bandwidth: ",signif(hinit,3),"   MSE: ",mean((theta[1,]-u)^2),
                 "   MAE: ",mean(abs(theta[1,]-u)),"\n")
-# now run aws-cycle                                                       
+# now run aws-cycle
 hakt <- hinit*hincr
 while(hakt<=hmax){
 ihakt <- min(ihmax,trunc(hakt))
@@ -724,7 +736,7 @@ z <- .Fortran("lpawsmnn",
               double(dp1),
               double(dp1),
               double(dp1),
-              as.logical(symmetric))[c("ai","bi","bi0")]
+              as.logical(symmetric),PACKAGE="aws")[c("ai","bi","bi0")]
     ai <- (1-eta)*z$ai + eta * ai
     bi <- matrix((1-eta)*z$bi + eta * bi,dp2,n)
     bi0 <- (1-eta)*z$bi0 + eta * bi0
@@ -735,8 +747,8 @@ z <- .Fortran("lpawsmnn",
                              as.double(ai),
                              as.double(bi),
                              as.double(theta),
-                             double(dp1*dp1))[[6]],dp1,n)
-if(!is.null(u)) 
+                             double(dp1*dp1),PACKAGE="aws")[[6]],dp1,n)
+if(!is.null(u))
 cat("bandwidth: ",signif(hakt,3),"   MSE: ",mean((theta[1,]-u)^2),
                  "   MAE: ",mean(abs(theta[1,]-u)),"\n")
 hakt <- hakt*hincr
@@ -766,17 +778,17 @@ z <- .Fortran("ipawsmul",
               as.double(kernl),
               double(dp1*dp1),
               double(dp1),
-              info=integer(1))[c("ai","bi","theta","info")]
-info <- z$info 
+              info=integer(1),PACKAGE="aws")[c("ai","bi","theta","info")]
+info <- z$info
 dpd <- dpd+1
 }
 theta <- matrix(z$theta,dp1,n)
 bi <- bi0 <- matrix(z$bi,dp2,n)
 ai <- z$ai
-if(!is.null(u)) 
+if(!is.null(u))
 cat("bandwidth: ",signif(hinit,3),"   MSE: ",mean((theta[1,]-u)^2),
                 "   MAE: ",mean(abs(theta[1,]-u)),"\n")
-# now run aws-cycle                                                       
+# now run aws-cycle
 hakt <- hinit*hincr
 while(hakt<=hmax){
 ihakt <- sum(maxdist<=hakt)
@@ -807,7 +819,7 @@ z <- .Fortran("lpawsmul",
               double(dp1),
               double(dp1),
               double(dp1),
-              as.logical(symmetric))[c("ai","bi","bi0")]
+              as.logical(symmetric),PACKAGE="aws")[c("ai","bi","bi0")]
     ai <- (1-eta)*z$ai + eta * ai
     bi <- matrix((1-eta)*z$bi + eta * bi,dp2,n)
     bi0 <- (1-eta)*z$bi0 + eta * bi0
@@ -818,8 +830,8 @@ z <- .Fortran("lpawsmul",
                              as.double(ai),
                              as.double(bi),
                              as.double(theta),
-                             double(dp1*dp1))[[6]],dp1,n)
-if(!is.null(u)) 
+                             double(dp1*dp1),PACKAGE="aws")[[6]],dp1,n)
+if(!is.null(u))
 cat("bandwidth: ",signif(hakt,3),"   MSE: ",mean((theta[1,]-u)^2),
                   "   MAE: ",mean(abs(theta[1,]-u)),"\n")
 hakt <- hakt*hincr
@@ -827,9 +839,10 @@ gc()
 }
 }
 }
-###                                                                       
-###            end cases                                                  
-###                                                                       
-list(theta=theta,y=y,x=x,call=args)
+###
+###            end cases
+###
+z<-list(theta=theta,y=y,x=x,call=args)
+class(z)<-"aws"
+z
 }
-

@@ -77,9 +77,9 @@ length(radii),radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
                         as.integer(ind[1] - 1),
                         as.single(numeric(2 * ind[1] - 1)),
                         as.single(numeric(2 * ind[1] - 1)),
-                        as.single(s2hat))
+                        as.single(s2hat),PACKAGE="aws")
                 yhat <- z$yhat
-                sk <- skmin <- z$sk     
+                sk <- skmin <- z$sk
                 if(graph) {
                         plot(x, y)
                         if(!is.null(z0)) lines(x, z0, col = 3)
@@ -87,7 +87,7 @@ length(radii),radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
                         lines(x, yhat-sqrt(lambda*sk),col=4,lty=2)
                         lines(x, yhat+sqrt(lambda*sk),col=4,lty=2)
                         if(!is.null(z0)) lines(x, yhat, col = 2)
-                        title(paste("Estimate  Iteration ", 0, 
+                        title(paste("Estimate  Iteration ", 0,
                         "  N(U) = ", 2 * ind[1] - 1))
                         ylim <- range(y - yhat)
                         if(!is.null(z0)) ylim <- range(ylim, z0 - yhat)
@@ -125,13 +125,13 @@ length(radii),radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
                         as.single(lambda.3),
                         as.single(eta),
                         as.single(gamma),
-                        as.single(kern))[c("yhat","sk","controls")]
+                        as.single(kern),PACKAGE="aws")[c("yhat","sk","controls")]
                 yhat <- z$yhat
                 sk <- z$sk
                 controls <- z$controls
                 skmin <- pmin(skmin, sk)
                 if(!is.null(z0))
-                cat("Iteration ", k-1, "MSE:", mean((yhat - z0)^2), "MAE:", 
+                cat("Iteration ", k-1, "MSE:", mean((yhat - z0)^2), "MAE:",
                         mean(abs(yhat - z0)), "\n")
                 plot(x, y)
                 if(!is.null(z0)) lines(x, z0, col = 3)
@@ -174,13 +174,13 @@ length(radii),radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
                         as.single(lambda.3),
                         as.single(eta),
                         as.single(gamma),
-                        as.single(kern), 
-                        as.single(sum(eps * s2hat)))[c("yhat","sk")]
+                        as.single(kern),
+                        as.single(sum(eps * s2hat)),PACKAGE="aws")[c("yhat","sk")]
                 yhat <- z$yhat
                 sk <- z$sk
         }
         if(!is.null(z0))
-                cat("kstar=", kstar, "MSE:", mean((yhat - z0)^2), "MAE:", 
+                cat("kstar=", kstar, "MSE:", mean((yhat - z0)^2), "MAE:",
                         mean(abs(yhat - z0)), "\n")
         list(yhat = yhat, shat = sqrt(sk),args=args)
 }
@@ -189,7 +189,7 @@ length(radii),radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
 #
 # bivariate local constant smoothing
 #
-# Copyright Weierstrass Instiute for Applied Analysis and Stochastics 
+# Copyright Weierstrass Instiute for Applied Analysis and Stochastics
 #           J. Polzehl 2000
 ############################################################################
 
@@ -277,7 +277,7 @@ awsbi <- function(y, lambda=3, gamma=1.3, eta = 4,
                 yhat = as.single(yhat),
                 as.single(s2hat),
                 sk = as.single(sk),
-                as.single(kiiinit + 0.001))
+                as.single(kiiinit + 0.001),PACKAGE="aws")
         yhat <- as.single(z$yhat)
         sk <- as.single(z$sk)
         if(graph) {
@@ -298,7 +298,7 @@ awsbi <- function(y, lambda=3, gamma=1.3, eta = 4,
                         as.single(lambda),
                         as.single(eta),
                         as.single(gamma),
-                        as.single(kern))[c("yhat","sk","controls")]
+                        as.single(kern),PACKAGE="aws")[c("yhat","sk","controls")]
                 yhat <- as.single(z$yhat)
                 sk <- as.single(z$sk)
                 controls <- as.single(z$controls)
@@ -314,7 +314,7 @@ awsbi <- function(y, lambda=3, gamma=1.3, eta = 4,
                         image(matrix(log(sk), ncol = ny),col=colors)
                         title(paste("log(var(yhat))"," Mean Var:",signif(mean(sk),3)))
                 if(!is.null(u0))
-                        cat("Iteration", k-1, "nu=", iii[k], "MSE", l2[k], 
+                        cat("Iteration", k-1, "nu=", iii[k], "MSE", l2[k],
                                 "MAE", r2[k], "\n")
             if(demomode) {
             cat("press ENTER to continue")
@@ -344,15 +344,15 @@ awsbi <- function(y, lambda=3, gamma=1.3, eta = 4,
                         as.single(lambda),
                         as.single(eta),
                         as.single(gamma),
-                        as.single(kern))[c("yhat","sk")]
+                        as.single(kern),PACKAGE="aws")[c("yhat","sk")]
                 if(!is.null(u0)){
                         l2[kstar] <- mean((z$yhat - u0)^2)
                         r2[kstar] <- mean(abs(z$yhat - u0))
-                        cat("Iteration ", kstar-1, "nu=", iii[kstar], "MSE", l2[kstar], 
+                        cat("Iteration ", kstar-1, "nu=", iii[kstar], "MSE", l2[kstar],
                                 "MAE", r2[kstar], "\n")
                         }
-        list(yhat = matrix(as.single(z$yhat), ncol = ny), 
-             shat = matrix(as.single(z$sk), ncol = ny), 
+        list(yhat = matrix(as.single(z$yhat), ncol = ny),
+             shat = matrix(as.single(z$sk), ncol = ny),
              nu = iii,  args=args)
         }
 }
@@ -361,7 +361,7 @@ awsbi <- function(y, lambda=3, gamma=1.3, eta = 4,
 #
 # trivariate local constant smoothing
 #
-# Copyright Weierstrass Instiute for Applied Analysis and Stochastics 
+# Copyright Weierstrass Instiute for Applied Analysis and Stochastics
 #           J. Polzehl 2000
 ############################################################################
 
@@ -442,7 +442,7 @@ awstri <- function(y, lambda = 3, gamma = 1.3 , eta = 4, s2hat = NULL,
                 as.single(lambda),
                 as.single(eta),
                 as.single(weight),
-                as.single(kern))[c("yhat","sk")]
+                as.single(kern),PACKAGE="aws")[c("yhat","sk")]
                 }
         else{
         z <- .Fortran("loctrial",
@@ -464,9 +464,9 @@ awstri <- function(y, lambda = 3, gamma = 1.3 , eta = 4, s2hat = NULL,
                       as.single(eta),
                       as.single(gamma),
                       as.single(weight),
-                      as.single(kern))[c("yhat","sk")]
+                      as.single(kern),PACKAGE="aws")[c("yhat","sk")]
                       }
-    list(yhat = array(as.single(z$yhat), dim = dy), shat = array(as.single(z$sk), 
+    list(yhat = array(as.single(z$yhat), dim = dy), shat = array(as.single(z$sk),
          dim = dy), args = args)
 }
 
@@ -484,7 +484,7 @@ getnubi <- function(radiusq, weights)
                 as.single(radiusq),
                 as.single(weights),
                 nu = as.integer(nu),
-                as.integer(length(radiusq)))$nu
+                as.integer(length(radiusq)),PACKAGE="aws")$nu
         nu
 }
 
@@ -501,8 +501,8 @@ getnutri <- function(radiusq, weights)
                 as.single(radiusq),
                 as.single(weights[1:2]),
                 nu = as.integer(nu3),
-                as.integer(length(radiusq)))$nu
-        for( i in 1:trunc(max(sqrt(radiusq))/weights[3])) { 
+                as.integer(length(radiusq)),PACKAGE="aws")$nu
+        for( i in 1:trunc(max(sqrt(radiusq))/weights[3])) {
            radius2 <- radiusq-i^2*weights[3]
            ind <- (1:length(radiusq))[radius2>=0]
            if(length(ind)<1) break
@@ -510,7 +510,7 @@ getnutri <- function(radiusq, weights)
                          as.single(radius2[ind]),
                          as.single(weights[1:2]),
                          nu = as.integer(nu[ind]),
-                         as.integer(length(ind)))$nu
+                         as.integer(length(ind)),PACKAGE="aws")$nu
         }
         nu3
 }

@@ -5,8 +5,8 @@
 \usage{awsuni(y, lambda=3, gamma=1.3, eta =4, s2hat = NULL, kstar = length(radii),
               radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
                       (5:8)*64,(5:8)*128,(5:8)*256),
-	      rmax=max(radii),graph = FALSE,z0 = NULL, eps = 1e-08, 
-	      control="dyadic", demomode=FALSE)}
+          rmax=max(radii),graph = FALSE,z0 = NULL, eps = 1e-08, 
+          control="dyadic", demomode=FALSE)}
 \arguments{
 \item{y}{observed values (ordered by value of independent variable)}
 \item{lambda}{main smoothing parameter (should be approximately 3)}
@@ -37,7 +37,7 @@ A list with components
 \item{shat}{estimated standard deviations of yhat (conditional on the chosen weights)}
 \item{args}{Main arguments supplied to awsuni}
 }
-\references{Polzehl, J. and Spokoiny, S. (2000). \emph{Adaptive Weights Smoothing with applications
+\references{Polzehl, J. and Spokoiny, V. (2000). \emph{Adaptive Weights Smoothing with applications
 to image restoration}, J.R.Statist.Soc. B, 62, Part 2, pp. 335-354}
 \note{Although the algorithm evaluates a regression model the structure of
 the regression function only depends on the ordering of the independent variable.
@@ -47,7 +47,7 @@ of the independent variable.
 This function is superseded by function aws and will be 
 removed in the next mayor version of the package.}
 \author{Joerg Polzehl \email{polzehl@wias-berlin.de}}
-\seealso{\code{\link{awsbi}}, \code{\link{awstri}}}
+\seealso{\code{\link{aws}}, \code{\link{awsbi}}, \code{\link{awstri}}}
 
 \examples{
 #  Blocks data (from Donoho, Johnstone, Kerkyacharian and Picard (1995))

@@ -30,10 +30,11 @@ C    eta    - main control parameter (should be around 4)
 C    gamma  - allow for increase of variances (over minsk) by factor gamma 
 C    kern   - vector of values of K(x) in seq(0,6,.3) (K(x)=exp(-x))
 C
-       integer n,ndelta,i,j,k,jmin,jmax,iz,newcontr
+       implicit logical (a-z)
+       integer n,ndelta,i,j,jmin,jmax,iz,newcontr
        real y(n),yhat(n),yhatnew(n),controls(2,n),s2hat(n),sknew(n),
      1         gamma,z,yhati,sk(n),minsk(n),kern(21),wj,
-     2         lambda,eta,ss2,lamski,swkp
+     2         lambda,eta,ss2,lamski,swkp,yh,az,ss2w
 C select neighbourhood
        do 1 i=1,n
          swkp=0
@@ -101,7 +102,8 @@ C    gamma  - allow for increase of variances (over minsk) by factor gamma
 C    kern   - vector of values of K(x) in seq(0,6,.3) (K(x)=exp(-x))
 C    break  - terminate iteration if ||yhatnew-yhat||^2 < break 
 C
-       integer n,newcontr(kstar),kstar,i,ndelta(kstar)
+       implicit logical (a-z)
+       integer n,kstar,newcontr(kstar),i,ndelta(kstar),k
        real y(n),yhat(n),yhatnew(n),controls(2,n),s2hat(n),sknew(n),
      1    gamma,sk(n),minsk(n),kern(21),lambda,eta,break,z,zd,s
        do 1 k=2,kstar
@@ -137,9 +139,10 @@ C    ndelta - radius of initial neighbourhood
 C    yh, sh  - working arrays
 C    s2hat  - variance estimates 
 C
-       integer n,ndelta,jmin,jmax,nj,j0,n1,n2,nbest
+       implicit logical (a-z)
+       integer n,ndelta,jmin,jmax,nj,j0,n1,n2,nbest,i,j,k
        real y(n),yhat(n),testj,yh(2*ndelta+1),s2hat(n),yj,yh1,z,
-     1      testmax,s2,sh(n),sj,sk(n)
+     1      testmax,sh(n),sj,sk(n)
        do 1 i=1,n
          jmin=max0(1,i-ndelta)
          jmax=min0(n,i+ndelta)
@@ -179,14 +182,11 @@ C        now test for inhomogeneous neighbourhoods
 1        continue
        return
        end
-       
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
 C                                                                C
 C    Bivariate Adaptive weights smoothing                        C
 C                                                                C
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-
-
        subroutine locbiw(nx,ny,y,yhat,yhatnew,sk,sknew,controls,
      1      newcontr,minsk,radiusq,shat,lam,eta,gamma,kern)
 C
@@ -213,11 +213,12 @@ C    eta    - main control parameter (should be around 4)
 C    gamma  - allow for increase of variances (over minsk) by factor gamma 
 C    kern   - vector of values of K(x) in seq(0,6,.3) (K(x)=exp(-x))
 C
-       integer nx,ny,newcontr,
-     1         ix,iy,jx,jy,k,ndelta,jxmin,jxmax,jymin,jymax
-       real yhat(nx,ny),y(nx,ny),controls(2,nx,ny),radiusq,lshat,
-     1      lshat2,gamma,z,yh,sxy,exy,yhati,yhatnew(nx,ny),
-     2      lam,eta,shat(nx,ny),minsk(nx,ny),ss2w,
+       implicit logical (a-z)
+       integer nx,ny,newcontr,ndeltaj,iz,
+     1         ix,iy,jx,jy,ndelta,jxmin,jxmax,jymin,jymax
+       real yhat(nx,ny),y(nx,ny),controls(2,nx,ny),radiusq,
+     1      gamma,z,yh,sxy,yhati,yhatnew(nx,ny),
+     2      lam,eta,shat(nx,ny),minsk(nx,ny),ss2w,az,
      2      sknew(nx,ny),sk(nx,ny),ski,kern(21),wj,swkp,ssk
 C select neighbourhood
        ndelta=sqrt(radiusq)
@@ -293,7 +294,8 @@ C    eta    - main control parameter (should be around 4)
 C    gamma  - allow for increase of variances (over minsk) by factor gamma 
 C    kern   - vector of values of K(x) in seq(0,6,.3) (K(x)=exp(-x))
 C
-       integer nx,ny,newcontr(kstar),kstar,k
+       implicit logical (a-z)
+       integer nx,ny,kstar,newcontr(kstar),k,ix,iy
        real yhat(nx,ny),y(nx,ny),controls(2,nx,ny),gamma,
      2      yhatnew(nx,ny),lam,eta,shat(nx,ny),minsk(nx,ny),
      2      sknew(nx,ny),sk(nx,ny),kern(21),radiusq(kstar),eps
@@ -319,9 +321,9 @@ C    given radius^2
 C    weight - excentricities of ellipses used as neighbourhoods
 C    n - length of radiusq, i.e. number of neighbouhoods in sequence
 C
-       integer nu(n),jzmin,jzmax,jz,nu
-     1         jx,jy,ndelta,jxmin,jxmax,jymin,jymax
-       real radiusq(n),weight(2),w1,w2
+       implicit logical (a-z)
+       integer n,nu(n),jx,jy,ndelta,jxmin,jxmax,jymin,jymax,i,ndeltaj
+       real radiusq(n),weight(2),w1
 C Calculate size of neighborhood
        w1=weight(1)
        do 1 i=1,n
@@ -356,11 +358,12 @@ C    radiussq - radius^2 of initial neighbourhood
 C    yh, sh  - working arrays
 C    s2hat  - variance estimates 
 C
-       integer nx,ny,ix,iy,jx,jy,ndelta,swkp,jxmin,jxmax,
-     1         jymin,jymax,wkp,nt(132),ii,jj,nind,swkp0
+       implicit logical (a-z)
+       integer nx,ny,ix,iy,jx,jy,ndelta,swkp,jxmin,jxmax,k,
+     1         jymin,jymax,nt(132),ii,jj,nind,swkp0,ndeltaj
        logical ind(132)
        real yhat(nx,ny),y(nx,ny),radiusq,yh,s2hat(nx,ny),st2(132),
-     1      sk(nx,ny),s2,yht(132),test,test0,yakt,s2hatakt
+     1      sk(nx,ny),s2,s20,yht(132),test,test0,yakt,s2hatakt,yh2,yh0
 C    y     I: observations
 C    yhat  O: initial estimate
 C    sk    O: sum_{U_1} w(,)
@@ -599,10 +602,11 @@ C    weight - excentricities of ellipsoids used as neighbourhoods
 C         (this allows to deal with different spacings in vertical direction)
 C    kern   - vector of values of K(x) in seq(0,6,.3) (K(x)=exp(-x))
 C
-       integer nx,ny,nz,jzmin,jzmax,iz,jz,izz,newcontr,
-     1         ix,iy,jx,jy,k,ndelta,jxmin,jxmax,jymin,jymax
+       implicit logical (a-z)
+       integer nx,ny,nz,jzmin,jzmax,iz,jz,izz,newcontr,ndeltaj,
+     1         ix,iy,jx,jy,ndelta,jxmin,jxmax,jymin,jymax
        real yhat(nx,ny,nz),y(nx,ny,nz),controls(2,nx,ny,nz),radiusq,
-     1      gamma,z,yh,sxy,exy,yhati,skig,weight(3),w1,w2,kern(21),
+     1      gamma,z,az,yh,sxy,yhati,skig,weight(3),w1,w2,kern(21),
      2      yhatnew(nx,ny,nz),lam,eta,shat(nx,ny,nz),sk(nx,ny,nz),ski,
      3      minsk(nx,ny,nz),sknew(nx,ny,nz),ssk,wj,swkp,sskw
 C    y     I: observations
@@ -699,7 +703,8 @@ C    weight - excentricities of ellipsoids used as neighbourhoods
 C         (this allows to deal with different spacings in vertical direction)
 C    kern   - vector of values of K(x) in seq(0,6,.3) (K(x)=exp(-x))
 C
-       integer nx,ny,nz,newcontr(kstar),kstar,k
+       implicit logical (a-z)
+       integer nx,ny,nz,kstar,newcontr(kstar),k,ix,iy,iz
        real yhat(nx,ny,nz),y(nx,ny,nz),controls(2,nx,ny,nz),gamma,
      2   yhatnew(nx,ny,nz),lam,eta,shat(nx,ny,nz),minsk(nx,ny,nz),
      3   sknew(nx,ny,nz),sk(nx,ny,nz),kern(21),radiusq(kstar),
@@ -724,10 +729,11 @@ C      prepare for next iteration
 
        subroutine loctriw0(nx,ny,nz,y,yhat,yhatnew,sk,sknew,controls,
      1       newcontr,radiusq,shat,lam,eta,weight,kern)
+       implicit logical (a-z)
        integer nx,ny,nz,jzmin,jzmax,iz,jz,izz,newcontr,
-     1         ix,iy,jx,jy,k,ndelta,jxmin,jxmax,jymin,jymax
+     1         ix,iy,jx,jy,ndelta,jxmin,jxmax,jymin,jymax,ndeltaj
        real yhat(nx,ny,nz),y(nx,ny,nz),controls(2,nx,ny,nz),radiusq,
-     1      z,yh,sxy,exy,yhati,skig,weight(3),w1,w2,kern(21),
+     1      z,yh,sxy,yhati,weight(3),w1,w2,kern(21),az,
      2      yhatnew(nx,ny,nz),lam,eta,shat,sk(nx,ny,nz),ski,
      3      sknew(nx,ny,nz),ssk,wj,swkp,sskw
 C
@@ -766,7 +772,6 @@ C select neighbourhood
              yhati=yhat(ix,iy,iz)
              ski=sk(ix,iy,iz)
              sxy=lam*ski
-             skig=ski*gamma
              swkp=0
              ssk=0.0
              yh=0.0
@@ -842,8 +847,9 @@ C    weight - excentricities of ellipsoids used as neighbourhoods
 C         (this allows to deal with different spacings in vertical direction)
 C    kern   - vector of values of K(x) in seq(0,6,.3) (K(x)=exp(-x))
 C
-       integer nx,ny,nz,newcontr(kstar),kstar,k
-       real yhat(nx,ny,nz),y(nx,ny,nz),controls(2,nx,ny,nz),gamma,
+       implicit logical (a-z)
+       integer nx,ny,nz,kstar,newcontr(kstar),k,ix,iy,iz
+       real yhat(nx,ny,nz),y(nx,ny,nz),controls(2,nx,ny,nz),
      2   yhatnew(nx,ny,nz),lam,eta,shat,
      3   sknew(nx,ny,nz),sk(nx,ny,nz),kern(21),radiusq(kstar),
      4   weight(3),eps

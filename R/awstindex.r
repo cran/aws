@@ -31,7 +31,9 @@ y <- sort(y)[n:1]
 x <- (1:(n-1))*log(y[-n]/y[-1])
 theta <- laws(x,qlambda=qlambda,model="Exponential",hinit=hinit,hincr=hincr,
      hmax=hmax,graph=graph,symmetric=symmetric)$theta
-list(tindex=theta[1],intensity=theta,y=y,call=args)
+z<-list(tindex=theta[1],intensity=theta,y=y,call=args)
+class(z)<-"laws.tindex"
+z
 }
 #
 #    R - function  awsdens  for local constant density estimation  in 1D, 2D and 3D                                                        
@@ -116,5 +118,7 @@ if(is.null(dy)){
                 hinit=hinit,hincr=hincr,hmax=hmax,graph=graph,demo=demo,
                 u=u,symmetric=symmetric)$theta
    dens <- dens/sum(dens)/prod(dry/ngrid)
-list(bin=bin,dens=dens,xgrid=xgrid,call=args)
+z<-list(bin=bin,dens=dens,xgrid=xgrid,call=args)
+class(z)<-"laws.density"
+z
 }

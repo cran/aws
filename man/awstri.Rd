@@ -35,7 +35,7 @@ y's)}
 weights)}
 \item{args}{Main arguments supplied to awstri}
 }
-\references{Polzehl, J. and Spokoiny, S. (2000). \emph{Adaptive Weights Smoothing 
+\references{Polzehl, J. and Spokoiny, V. (2000). \emph{Adaptive Weights Smoothing 
 with applications
 to image restoration}, J.R.Statist.Soc. B, 62, Part 2, pp.335-354}
 \note{The function assumes that the data are given on a 3D-grid 
@@ -43,7 +43,7 @@ corresponding to the dimensionality of y.
 This function is superseded by function aws and will be 
 removed in the next mayor version of the package.}
 \author{Joerg Polzehl \email{polzehl@wias-berlin.de}}
-\seealso{\code{\link{awsbi}},\code{\link{awsuni}}}
+\seealso{\code{\link{aws}}, \code{\link{awsbi}},\code{\link{awsuni}}}
 
 \examples{
 xy <- rbind(rep(0:30,31),rep(0:30,rep(31,31)))
@@ -67,10 +67,9 @@ dim(w3) <- c(31,31,31)
 sigma <- .4
 y <- w3+rnorm(w3,0,sigma)
 #  increase rmax for better results
-yhat <- awstri(y,rmax=5)
+yhat <- awstri(y,rmax=2)
 rm(y,yhat,w3,xy)
 }
 \keyword{regression}
 \keyword{nonparametric}
 \keyword{smooth}
-

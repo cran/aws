@@ -3,53 +3,52 @@
 #    for local constant Gaussian, Bernoulli, Exponential, Poisson, Weibull and  
 #    Volatility models                                                          
 #
-#    Copyright (C) 2002 Weierstrass-Institut für                                
-#                       Angewandte Analysis und Stochastik (WIAS)               
+#    Copyright (C) 2002 Weierstrass-Institut für
+#                       Angewandte Analysis und Stochastik (WIAS)
 #
-#    Author:  Jörg Polzehl                                                      
+#    Author:  Jörg Polzehl
 #
-#  This program is free software; you can redistribute it and/or modify         
-#  it under the terms of the GNU General Public License as published by         
-#  the Free Software Foundation; either version 2 of the License, or            
-#  (at your option) any later version.                                          
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
 #
-#  This program is distributed in the hope that it will be useful,              
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of               
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                
-#  GNU General Public License for more details.                                 
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
 #
-#  You should have received a copy of the GNU General Public License            
-#  along with this program; if not, write to the Free Software                  
-#  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,        
-#  USA.                                                                         
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+#  USA.
 #
 laws <- function(y,x=NULL,qlambda=NULL,eta=0.5,lkern="Triangle",model="Poisson",
                  shape=NULL,hinit=NULL,hincr=NULL,hmax=10,NN=FALSE,u=NULL,
-                 graph=FALSE,demo=FALSE,symmetric=TRUE)
-{ 
+                 graph=FALSE,demo=FALSE,symmetric=FALSE,wghts=NULL)
+{
 #
-#    first check arguments and initialize                                 
+#    first check arguments and initialize
 #
 args <- match.call()
 eps <- 1.e-10
 if(is.null(qlambda)) if(symmetric) qlambda <- switch(model,
                                                      Gaussian=.985,
-                                                     Bernoulli=.972,
-                                                     Exponential=.972,
-                                                     Poisson=.980,
-                                                     Weibull=.972,
-                                                     Volatility=.972)
-                     else qlambda <- switch(model,
-                                                     Gaussian=.966,
-                                                     Bernoulli=.953,
-                                                     Exponential=.914,
-                                                     Poisson=.958,
-                                                     Weibull=.914,
-                                                     Volatility=.914)
+                                                     Bernoulli=.985,
+                                                     Exponential=.985,
+                                                     Poisson=.985,
+                                                     Weibull=.985,
+                                                     Volatility=.995)
+                     else qlambda <- switch(model,   Gaussian=.966,
+                                                     Bernoulli=.966,
+                                                     Exponential=.966,
+                                                     Poisson=.966,
+                                                     Weibull=.966,
+                                                     Volatility=.98)
 if(qlambda>=1 || qlambda<.6) return("Inappropriate value of qlambda")
 if(eta<eps || eta>=1) return("Inappropriate value of eta")
 if(model!="Gaussian"&&model!="Bernoulli"&&model!="Exponential"&&
-   model!="Poisson"&&model!="Weibull"&&model!="Volatility") 
+   model!="Poisson"&&model!="Weibull"&&model!="Volatility")
    return(paste("specified model ",model," not yet implemented"))
 #
 #    generate kernel on a grid  and set lambda
@@ -65,33 +64,33 @@ switch(kern,Triangle=pmax(0,(1-x)),
             pmax(0,(1-x))
             })
 # this gives a discretized kern on [0,1.01] for use of (xij^2) as argument
-#  length 102  (last element to avoid numerical problems if x(j)==xi+-h)  
+#  length 102  (last element to avoid numerical problems if x(j)==xi+-h)
 kernl <- getkern(seq(0,1.01,.01),lkern)
 kerns <- getkern(seq(0,1.01,.01),"Exponential")
 #
-#      get lambda as quantile of appropriate chisq,                       
-#                rescale to be consistent with the paper in  lamakt       
+#      get lambda as quantile of appropriate chisq,
+#                rescale to be consistent with the paper in  lamakt
 #
 lamakt <- 5*qchisq(qlambda,1)
 if(model=="Gaussian") lamakt <- lamakt*shape*2
 #
-#   specify which statistics are needed and transform data if necessary   
+#   specify which statistics are needed and transform data if necessary
 #
 logtheta <- switch(model,Gaussian=FALSE,Bernoulli=TRUE,Exponential=TRUE,
                    Poisson=TRUE,Weibull=TRUE,Volatility=TRUE)
 logctheta <- switch(model,Gaussian=FALSE,Bernoulli=TRUE,Exponential=FALSE,
                     Poisson=FALSE,Weibull=FALSE,Volatility=FALSE)
-if(model=="Weibull" && (is.null(shape) || shape<=0)) 
+if(model=="Weibull" && (is.null(shape) || shape<=0))
    return("Shape parameter for Weibull has to be positive")
 if(model=="Gaussian" && (is.null(shape) || shape<=0)) 
    return("Variance (shape) for Gaussian errors has to be positive")
 weibull <- FALSE
-shape <- 1
 if(model=="Weibull") {
 model <- "Exponential"
 y <- y^shape
 weibull <- TRUE
 }
+shape <- 1
 if(model=="Volatility"){
 model <- "Exponential"
 y <- y^2
@@ -102,9 +101,10 @@ shape <- 2
 }
 if(demo&& !graph) graph <- TRUE
 # now check which procedure is appropriate
-gridded <- is.null(x) 
+gridded <- is.null(x)
 if(gridded){
 ##  this is the version on a grid
+if(is.null(hinit)||hinit<1) hinit <- 1
 dy <- dim(y)
 if(is.null(dy)) {
    form <- "uni"
@@ -117,6 +117,10 @@ if(length(dy)==2){
 n1 <- dy[1]
 n2 <- dy[2]
 n <- n1*n2
+if(is.null(wghts)) wghts<-c(1,1)
+hinit<-hinit/wghts[1]
+hmax<-hmax/wghts[1]
+wghts<-(wghts[2]/wghts[1])^2
 }
 if(length(dy)==3){
    form <- "tri"
@@ -125,19 +129,23 @@ n1 <- dy[1]
 n2 <- dy[2]
 n3 <- dy[3]
 n <- n1*n2*n3
+if(is.null(wghts)) wghts<-c(1,1,1)
+hinit<-hinit/wghts[1]
+hmax<-hmax/wghts[1]
+wghts<-(wghts[2:3]/wghts[1])^2
 }
-if(length(dy)>3) 
+if(length(dy)>3)
    return("AWS for more than 3 dimensional grids is not implemented")
-} else { 
+} else {
 # not gridded
-dx <- dim(x)   
+dx <- dim(x)
 ddim <- 1
 if(is.null(dx)&&NN) {
 #
 #    order data by order of x
 #
     form <- "uni"
-    n <- length(x) 
+    n <- length(x)
     if(n!=length(y)) return("incompatible lengths of x and y")
     ox <- order(x)
     x <- x[ox]
@@ -188,33 +196,39 @@ if(is.null(dx)&&NN) {
    gc()
    }
    }
+
    if(length(y)!=n) return("incompatible dimensions of x and y")
    #
    #
+   if(NN){
+      if(is.null(hinit)||hinit<1) hinit <- 1
+   } else {
+      if(is.null(hinit)||hinit<=0) hinit <- mindist
+   }
    }
 #
-#     now set hincr if not provided                                       
+#     now set hincr if not provided
 #
-if(is.null(hincr)) hincr <- 1.25^(1/ddim)  
+if(is.null(hincr)) hincr <- 1.25^(1/ddim)
 #
-#    get a global estimate if they are needed for regularization          
+#    get a global estimate if they are needed for regularization
 #
 if(logtheta) gtheta <- mean(y)
 #
-#    now select the correct aws-procedure                                 
+#    now select the correct aws-procedure
 #
-#   cases:    gridded      uni                                            
-#             gridded      bi                                             
-#             gridded      tri                                            
-#             !gridded     multi                                          
-#             !gridded     multi, Nearest Neighbor                        
+#   cases:    gridded      uni
+#             gridded      bi
+#             gridded      tri
+#             !gridded     multi
+#             !gridded     multi, Nearest Neighbor
 #
 if(gridded &&  form=="uni" ){
-###                                                                       
-###              gridded     uni                                          
-###                                                                       
-###     this should run a little faster than the nongridded version       
-###                                                                       
+###
+###              gridded     uni
+###
+###     this should run a little faster than the nongridded version
+###
 bi <- ai <- theta <- numeric(n)
 if(is.null(hinit)||hinit<1) hinit <- 1
 #  first initialize
@@ -224,7 +238,7 @@ z <- .Fortran("iawsuni",
               as.double(hinit),
               bi=as.double(bi),
               ai=as.double(ai),
-              as.double(kernl))[c("bi","ai")]
+              as.double(kernl),PACKAGE="aws")[c("bi","ai")]
 bi <- z$bi
 ai <- z$ai
 if(logtheta) {
@@ -248,11 +262,11 @@ if(!is.null(u)) cat("bandwidth: ",signif(hinit,3),"   MSE: ",
                     mean((theta-u)^2),"   MAE: ",mean(abs(theta-u)),"\n")
 if(demo) readline("Press return")
 if(weibull) theta <- theta^(shape)
-# now run aws-cycle                                                       
+# now run aws-cycle
 hakt <- hinit*hincr
 if(graph){
 #
-#   run single steps to display intermediate results                      
+#   run single steps to display intermediate results
 #
 while(hakt<=hmax){
 z <- switch(model,
@@ -266,7 +280,7 @@ z <- switch(model,
                               ai=as.double(ai),
                               as.double(kernl),
                               as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")],
+                              as.logical(symmetric),PACKAGE="aws")[c("bi","ai")],
             Bernoulli=.Fortran("lberuni",
                                as.double(y),
                                as.integer(n),
@@ -279,7 +293,7 @@ z <- switch(model,
                                ai=as.double(ai),
                                as.double(kernl),
                                as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")],
+                              as.logical(symmetric),PACKAGE="aws")[c("bi","ai")],
             Poisson=.Fortran("lpoiuni",
                              as.double(y),
                              as.integer(n),
@@ -291,7 +305,7 @@ z <- switch(model,
                              ai=as.double(ai),
                              as.double(kernl),
                              as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")],
+                              as.logical(symmetric),PACKAGE="aws")[c("bi","ai")],
             Exponential=.Fortran("lexpuni",
                              as.double(y),
                              as.integer(n),
@@ -303,7 +317,7 @@ z <- switch(model,
                              ai=as.double(ai),
                              as.double(kernl),
                              as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")])
+                              as.logical(symmetric),PACKAGE="aws")[c("bi","ai")])
 ai <- (1-eta)*z$ai + eta * ai
 bi <- (1-eta)*z$bi + eta * bi
 theta  <- ai / bi
@@ -326,7 +340,7 @@ gc()
 if(weibull) theta <- theta^(1/shape)
 } else
 {
-#   run all iterations in one call                                        
+#   run all iterations in one call
 theta <- switch(model,
             Gaussian=.Fortran("gawsuni",
                               as.double(y),
@@ -342,8 +356,7 @@ theta <- switch(model,
                               as.double(kernl),
                               as.double(kerns),
                               as.double(bi),
-                              as.double(ai),
-                              as.logical(symmetric))$theta,
+                              as.logical(symmetric),PACKAGE="aws")$theta,
             Bernoulli=.Fortran("gberuni",
                               as.double(y),
                               as.integer(n),
@@ -361,7 +374,7 @@ theta <- switch(model,
                               as.double(kerns),
                               as.double(bi),
                               as.double(ai),
-                              as.logical(symmetric))$theta,
+                              as.logical(symmetric),PACKAGE="aws")$theta,
             Poisson= .Fortran("gpoiuni",
                               as.double(y),
                               as.integer(n),
@@ -378,7 +391,7 @@ theta <- switch(model,
                               as.double(kerns),
                               as.double(bi),
                               as.double(ai),
-                              as.logical(symmetric))$theta,
+                              as.logical(symmetric),PACKAGE="aws")$theta,
             Exponential=.Fortran("gexpuni",
                               as.double(y),
                               as.integer(n),
@@ -395,17 +408,17 @@ theta <- switch(model,
                               as.double(kerns),
                               as.double(bi),
                               as.double(ai),
-                              as.logical(symmetric))$theta)
+                              as.logical(symmetric),PACKAGE="aws")$theta)
 if(weibull) theta <- theta^(1/shape)
 }
 }
       if(gridded &&  form=="bi" ){
-###                                                                       
-###             gridded      bi                                           
-###                                                                       
+###
+###             gridded      bi
+###
 bi <- ai <- theta <- matrix(0,n1,n2)
 if(is.null(hinit)||hinit<1) hinit <- 1
-#  first initialize                                                       
+#  first initialize
 z <- .Fortran("iawsbi",
               as.double(y),
               as.integer(n1),
@@ -413,7 +426,8 @@ z <- .Fortran("iawsbi",
               as.double(hinit),
               bi=as.double(bi),
               ai=as.double(ai),
-              as.double(kernl))[c("bi","ai")]
+              as.double(kernl),
+              as.double(wghts),PACKAGE="aws")[c("bi","ai")]
 bi <- z$bi
 ai <- z$ai
 if(logtheta) {
@@ -438,11 +452,11 @@ if(!is.null(u)) cat("bandwidth: ",signif(hinit,3),"   MSE: ",
                     mean((theta-u)^2),"   MAE: ",mean(abs(theta-u)),"\n")
 if(demo) readline("Press return")
 if(weibull) theta <- theta^(shape)
-# now run aws-cycle                                                       
+# now run aws-cycle
 hakt <- hinit*hincr
 if(graph){
 #
-#   run single steps to display intermediate results                      
+#   run single steps to display intermediate results
 #
 while(hakt<=hmax){
 z <- switch(model,
@@ -457,7 +471,8 @@ z <- switch(model,
                               ai=as.double(ai),
                               as.double(kernl),
                               as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")],
+                              as.logical(symmetric),
+                              as.double(wghts),PACKAGE="aws")[c("bi","ai")],
             Bernoulli=.Fortran("lberbi",
                               as.double(y),
                               as.integer(n1),
@@ -471,7 +486,8 @@ z <- switch(model,
                               ai=as.double(ai),
                               as.double(kernl),
                               as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")],
+                              as.logical(symmetric),
+                              as.double(wghts),PACKAGE="aws")[c("bi","ai")],
             Poisson=.Fortran("lpoibi",
                               as.double(y),
                               as.integer(n1),
@@ -484,7 +500,8 @@ z <- switch(model,
                               ai=as.double(ai),
                               as.double(kernl),
                               as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")],
+                              as.logical(symmetric),
+                              as.double(wghts),PACKAGE="aws")[c("bi","ai")],
             Exponential=.Fortran("lexpbi",
                               as.double(y),
                               as.integer(n1),
@@ -497,7 +514,8 @@ z <- switch(model,
                               ai=as.double(ai),
                               as.double(kernl),
                               as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")])
+                              as.logical(symmetric),
+                              as.double(wghts),PACKAGE="aws")[c("bi","ai")])
 ai <- (1-eta)*z$ai + eta * ai
 bi <- matrix((1-eta)*z$bi + eta * bi,n1,n2)
 theta  <- matrix(ai / bi, n1, n2)
@@ -520,7 +538,7 @@ gc()
 if(weibull) theta <- theta^(1/shape)
 } else
 {
-#   run all iterations in one call                                        
+#   run all iterations in one call
 theta <- switch(model,
             Gaussian=.Fortran("gawsbi",
                               as.double(y),
@@ -537,8 +555,8 @@ theta <- switch(model,
                               as.double(kernl),
                               as.double(kerns),
                               as.double(bi),
-                              as.double(ai),
-                              as.logical(symmetric))$theta,
+                              as.logical(symmetric),
+                              as.double(wghts),PACKAGE="aws")$theta,
             Bernoulli=.Fortran("gberbi",
                               as.double(y),
                               as.integer(n1),
@@ -557,7 +575,8 @@ theta <- switch(model,
                               as.double(kerns),
                               as.double(bi),
                               as.double(ai),
-                              as.logical(symmetric))$theta,
+                              as.logical(symmetric),
+                              as.double(wghts),PACKAGE="aws")$theta,
             Poisson=.Fortran("gpoibi",
                               as.double(y),
                               as.integer(n1),
@@ -575,7 +594,8 @@ theta <- switch(model,
                               as.double(kerns),
                               as.double(bi),
                               as.double(ai),
-                              as.logical(symmetric))$theta,
+                              as.logical(symmetric),
+                              as.double(wghts),PACKAGE="aws")$theta,
             Exponential=.Fortran("gexpbi",
                               as.double(y),
                               as.integer(n1),
@@ -593,15 +613,16 @@ theta <- switch(model,
                               as.double(kerns),
                               as.double(bi),
                               as.double(ai),
-                              as.logical(symmetric))$theta)
+                              as.logical(symmetric),
+                              as.double(wghts),PACKAGE="aws")$theta)
 theta <- matrix(theta,n1,n2)
 if(weibull) theta <- theta^(1/shape)
 }
 }
       if(gridded &&  form=="tri" ){
-###                                                                       
-###             gridded      tri                                          
-###                                                                       
+###
+###             gridded      tri
+###
 bi <- ai <- theta <- array(0,c(n1,n2,n3))
 if(is.null(hinit)||hinit<1) hinit <- 1
 #  first initialize
@@ -613,7 +634,8 @@ z <- .Fortran("iawstri",
               as.double(hinit),
               bi=as.double(bi),
               ai=as.double(ai),
-              as.double(kernl))[c("bi","ai")]
+              as.double(kernl),
+              as.double(wghts),PACKAGE="aws")[c("bi","ai")]
 bi <- z$bi
 ai <- z$ai
 if(logtheta) {
@@ -638,11 +660,11 @@ if(!is.null(u)) cat("bandwidth: ",signif(hinit,3),"   MSE: ",
                     mean((theta-u)^2),"   MAE: ",mean(abs(theta-u)),"\n")
 if(demo) readline("Press return")
 if(weibull) theta <- theta^(shape)
-# now run aws-cycle                                                       
+# now run aws-cycle
 hakt <- hinit*hincr
 if(graph){
 #
-#   run single steps to display intermediate results                      
+#   run single steps to display intermediate results
 #
 while(hakt<=hmax){
 z <- switch(model,
@@ -658,7 +680,8 @@ z <- switch(model,
                                ai=as.double(ai),
                                as.double(kernl),
                                as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")],
+                               as.logical(symmetric),
+                               as.double(wghts),PACKAGE="aws")[c("bi","ai")],
             Bernoulli=.Fortran("lbertri",
                                as.double(y),
                                as.integer(n1),
@@ -673,7 +696,8 @@ z <- switch(model,
                                ai=as.double(ai),
                                as.double(kernl),
                                as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")],
+                               as.logical(symmetric),
+                               as.double(wghts),PACKAGE="aws")[c("bi","ai")],
             Poisson=.Fortran("lpoitri",
                               as.double(y),
                               as.integer(n1),
@@ -687,7 +711,8 @@ z <- switch(model,
                               ai=as.double(ai),
                               as.double(kernl),
                               as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")],
+                              as.logical(symmetric),
+                              as.double(wghts),PACKAGE="aws")[c("bi","ai")],
             Exponential=.Fortran("lexptri",
                               as.double(y),
                               as.integer(n1),
@@ -701,7 +726,8 @@ z <- switch(model,
                               ai=as.double(ai),
                               as.double(kernl),
                               as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")])
+                              as.logical(symmetric),
+                              as.double(wghts),PACKAGE="aws")[c("bi","ai")])
 ai <- (1-eta)*z$ai + eta * bi * theta
 bi <- array((1-eta)*z$bi + eta * bi,c(n1,n2,n3))
 theta  <- array(ai / bi, c(n1,n2,n3))
@@ -724,7 +750,7 @@ gc()
 if(weibull) theta <- theta^(1/shape)
 } else
 {
-#   run all iterations in one call                                        
+#   run all iterations in one call
 theta <- switch(model,
             Gaussian=.Fortran("gawstri",
                                as.double(y),
@@ -742,8 +768,8 @@ theta <- switch(model,
                                as.double(kernl),
                                as.double(kerns),
                                as.double(bi),
-                               as.double(ai),
-                              as.logical(symmetric))$theta,
+                               as.logical(symmetric),
+                               as.double(wghts),PACKAGE="aws")$theta,
             Bernoulli=.Fortran("gbertri",
                                as.double(y),
                                as.integer(n1),
@@ -763,7 +789,8 @@ theta <- switch(model,
                                as.double(kerns),
                                as.double(bi),
                                as.double(ai),
-                              as.logical(symmetric))$theta,
+                               as.logical(symmetric),
+                               as.double(wghts),PACKAGE="aws")$theta,
             Poisson=.Fortran("gpoitri",
                               as.double(y),
                               as.integer(n1),
@@ -782,7 +809,8 @@ theta <- switch(model,
                               as.double(kerns),
                               as.double(bi),
                               as.double(ai),
-                              as.logical(symmetric))$theta,
+                              as.logical(symmetric),
+                              as.double(wghts),PACKAGE="aws")$theta,
             Exponential=.Fortran("gexptri",
                               as.double(y),
                               as.integer(n1),
@@ -801,19 +829,19 @@ theta <- switch(model,
                               as.double(kerns),
                               as.double(bi),
                               as.double(ai),
-                              as.logical(symmetric))$theta)
+                              as.logical(symmetric),
+                              as.double(wghts),PACKAGE="aws")$theta)
 theta <- array(theta, c(n1,n2,n3))
 if(weibull) theta <- theta^(1/shape)
 }
 }
       if( form=="multi" ){
-###                                                                       
-###                        multi (nongridded)    p==0 or p==1             
-###                                                                       
+###
+###                        multi (nongridded)    p==0 or p==1
+###
 bi <- numeric(n)
 theta <- ai <- numeric(n)
 if(NN){
-if(is.null(hinit)||hinit<2) hinit <- 2
 ihinit <- trunc(hinit)
 z <- .Fortran("iawsmnn",
               as.integer(n),
@@ -823,7 +851,7 @@ z <- .Fortran("iawsmnn",
               as.double(hinit),
               bi=as.double(bi),
               ai=as.double(ai),
-              as.double(kernl))[c("bi","ai")]
+              as.double(kernl),PACKAGE="aws")[c("bi","ai")]
 bi <- z$bi
 ai <- z$ai
 if(logtheta) {
@@ -833,7 +861,7 @@ ai <- (1-eta)*ai+eta*gtheta
 theta <- ai/bi
 if(logtheta) ltheta <- log(theta+eps*max(theta))
 if(logctheta) lctheta <- log(1.e0-theta+eps*max(1.e0-theta))
-if(!is.null(u)){ 
+if(!is.null(u)){
 if(weibull) theta <- theta^(1/shape)
 cat("bandwidth: ",signif(hinit,3),"   MSE: ",
     mean((theta-u)^2),"   MAE: ",mean(abs(theta-u)),"\n")
@@ -858,7 +886,7 @@ z <- switch(model,
                                as.double(hakt),
                                as.double(kernl),
                                as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")],
+                               as.logical(symmetric),PACKAGE="aws")[c("bi","ai")],
               Bernoulli=.Fortran("lbermnn",
                                as.integer(n),
                                as.double(y),
@@ -875,7 +903,7 @@ z <- switch(model,
                                as.double(hakt),
                                as.double(kernl),
                                as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")],
+                               as.logical(symmetric),PACKAGE="aws")[c("bi","ai")],
               Poisson=.Fortran("lpoimnn",
                                as.integer(n),
                                as.double(y),
@@ -891,7 +919,7 @@ z <- switch(model,
                                as.double(hakt),
                                as.double(kernl),
                                as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")],
+                               as.logical(symmetric),PACKAGE="aws")[c("bi","ai")],
               Exponential=.Fortran("lexpmnn",
                                as.integer(n),
                                as.double(y),
@@ -907,7 +935,7 @@ z <- switch(model,
                                as.double(hakt),
                                as.double(kernl),
                                as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")])
+                               as.logical(symmetric),PACKAGE="aws")[c("bi","ai")])
     ai <- (1-eta)*z$ai + eta * ai
     bi <- (1-eta)*z$bi + eta * bi
     theta <- ai/bi
@@ -937,7 +965,7 @@ z <- .Fortran("iawsmul",
               as.double(hinit),
               bi=as.double(bi),
               ai=as.double(ai),
-              as.double(kernl))[c("bi","ai")]
+              as.double(kernl),PACKAGE="aws")[c("bi","ai")]
 bi <- z$bi
 ai <- z$ai
 if(logtheta) {
@@ -973,7 +1001,7 @@ z <- switch(model,
                                as.double(hakt),
                                as.double(kernl),
                                as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")],
+                               as.logical(symmetric),PACKAGE="aws")[c("bi","ai")],
               Bernoulli=.Fortran("lbermul",
                                as.integer(n),
                                as.double(y),
@@ -991,7 +1019,7 @@ z <- switch(model,
                                as.double(hakt),
                                as.double(kernl),
                                as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")],
+                               as.logical(symmetric),PACKAGE="aws")[c("bi","ai")],
               Poisson=.Fortran("lpoimul",
                                as.integer(n),
                                as.double(y),
@@ -1008,7 +1036,7 @@ z <- switch(model,
                                as.double(hakt),
                                as.double(kernl),
                                as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")],
+                               as.logical(symmetric),PACKAGE="aws")[c("bi","ai")],
               Exponential=.Fortran("lexpmul",
                                as.integer(n),
                                as.double(y),
@@ -1025,7 +1053,7 @@ z <- switch(model,
                                as.double(hakt),
                                as.double(kernl),
                                as.double(kerns),
-                              as.logical(symmetric))[c("bi","ai")])
+                               as.logical(symmetric),PACKAGE="aws")[c("bi","ai")])
     ai <- (1-eta)*z$ai + eta * ai
     bi <- (1-eta)*z$bi + eta * bi
     theta <- ai/bi
@@ -1046,5 +1074,8 @@ if(weibull) theta <- theta^(1/shape)
 ###                                                                       
 ###            end cases                                                  
 ###                                                                       
-list(theta=theta,y=y,x=x,call=args)
+z<-list(theta=theta,y=y,x=x,call=args)
+class(z)<-switch(model,Gaussian="laws.gaussian",Bernoulli="laws.bernoulli",Exponential="laws.exponential",
+                 Poisson="laws.poisson",Weibull="laws.weibull",Volatility="laws.vola")
+z
 }

@@ -40,7 +40,7 @@ weights)}
 \item{nu}{maximal number of design points in neighborhood used}
 \item{args}{main arguments supplied to awsbi}
 }
-\references{Polzehl, J. and Spokoiny, S. (2000). \emph{Adaptive Weights Smoothing 
+\references{Polzehl, J. and Spokoiny, V. (2000). \emph{Adaptive Weights Smoothing 
 with applications
 to image restoration}, J.R.Statist.Soc. B, 62, Part 2, pp. 335-354}
 \note{The function assumes that the data are given on a 2D-grid 
@@ -48,7 +48,7 @@ corresponding to the dimensionality of y.
 This function is superseded by function aws and will be 
 removed in the next mayor version of the package.}
 \author{Joerg Polzehl \email{polzehl@wias-berlin.de}}
-\seealso{\code{\link{awsuni}},\code{\link{awstri}}}
+\seealso{\code{\link{aws}}, \code{\link{awsuni}},\code{\link{awstri}}}
 
 \examples{
 xy<-rbind(rep(0:255,256),rep(0:255,rep(256,256)))
@@ -70,7 +70,7 @@ w0[((xy[2,]-30)^2+(xy[1,]-30)^2)<=256]<-0
 sigma<-.25
 y<-w0+rnorm(w0,0,sigma)
 #  increase rmax for better results
-yhat<-awsbi(y,rmax=5)
+yhat<-awsbi(y,rmax=3)
 par(mfrow=c(1,3))
 image(y,col=gray((0:255)/255))
 title("Noisy image")

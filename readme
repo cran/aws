@@ -1,27 +1,41 @@
-AWS is a library containing functions to perform 
+AWS is a library containing functions to perform
 structural adaptive smoothing (adaptive weights smoothing) 
 as introduced in 
 
-[1] Polzehl, J. and Spokoiny, S. (2000). Adaptive Weights Smoothing with 
+[1] Polzehl, J. and Spokoiny, V. (2000). Adaptive Weights Smoothing with 
 applications to image restoration}, J.R.Statist.Soc. B, 62, Part 2, pp. 
 335-354.
 
-[2] Polzehl, J. and Spokoiny, S. (2002). Varying coefficient regression 
-modeling by adaptive weights smoothing, Manuscript.
+[2] Polzehl, J. and Spokoiny, V. (2003). Varying coefficient regression 
+modeling by adaptive weights smoothing, WIAS-Preprint 818.
 
-[3] Polzehl, J. and Spokoiny, S. (2002b). Local likelihood modelling by 
+[3] Polzehl, J. and Spokoiny, V. (2002). Local likelihood modelling by 
 adaptive  weights smoothing, WIAS-Preprint 787.
      
-The third paper is and the second paper will be available as WIAS - Preprints 
-from 
+Revised versions of [2] and [3] are available from
 
-URL: http//www.wias-berlin.de/private/polzehl/papers.html
 
-and 
+URL: http://www.wias-berlin.de/project-areas/stat/projects/awspapers.html
 
-URL: http://www.wias-berlin.de/publications/index.pl?preprints
+Changes from version 1.2.0:
 
-soon. 
+- functions aws and laws now carry an additional argument wghts. This allows
+  to grow local elliptical neightborhoods instead of circular neighborhoods,
+  i.e. to adjust for different distances in the coordinates or different
+  influence of explanatory variables.
+
+- additional function   awsh  covers the case of univariate heteroscedastic regression
+
+- several errors in the documentation have been corrected
+
+- some errors have been corrected
+
+Changes from version 1.1.0:
+
+- defaults for parameter lambda have been changed
+
+- some changes in the code to allow for a better memory usage in 3D
+
 
 Changes from version 1.0.x:
 
@@ -82,7 +96,3 @@ univariate distribution. See again [3] for details.
 Joerg Polzehl
 email: polzehl@wias-berlin.de
 URL: http://www.wias-berlin.de/private/polzehl
-
-
-
-

@@ -6,13 +6,13 @@
   This function implements a Adaptive Weights Smoothing 
   procedure for local constant Poisson, Bernoulli, Exponential,
   Weibull, Volatility and Gaussian models
-  as described in Polzehl \& Spokoiny (2002b).
+  as described in Polzehl \& Spokoiny (2002).
 }
 \usage{
 laws(y, x = NULL, qlambda = NULL, eta = 0.5, lkern = "Triangle", 
      model = "Poisson", shape = NULL, hinit = NULL, hincr = NULL, 
      hmax = 10, NN = FALSE, u = NULL, graph = FALSE, demo = FALSE, 
-     symmetric = TRUE)
+     symmetric = FALSE, wghts=NULL)
 }
 %- maybe also `usage' for other objects documented here.
 \arguments{
@@ -66,6 +66,9 @@ laws(y, x = NULL, qlambda = NULL, eta = 0.5, lkern = "Triangle",
   \item{symmetric}{ If \code{symmetric==TRUE} the stochastic penalty is
            symmetrized, i.e. \code{(sij + sji)/lambda} is used instead of 
            \code{sij/lambda}. See references for details.}
+   \item{wghts}{ Specifies wghts for distance evaluation on a bi- or trivariate grid.
+                Allows for anisotropic local neighborhoods. If \code{wghts=NULL}
+                isotropic neighborhoods are used. }
 }
 \details{ This function implements an adaptive weights 
    smoothing (AWS) procedure for a several classes of distributions for the dependent
@@ -94,7 +97,7 @@ laws(y, x = NULL, qlambda = NULL, eta = 0.5, lkern = "Triangle",
    include e.g. test for constant (over time) failure rates and estimation of tail indicies.}
    \item{Gaussian regression}{\code{model="Gaussian"} This essentially coincides with the
    local constant regression model with additive sub-gaussian errors as described in 
-   Polzehl and Spokoiny (2000, 2002).}
+   Polzehl and Spokoiny (2000, 2003).}
    \item{Weibull regression}{\code{model="Weibull"} Applications in reliability analysis.}
    \item{Volatility model}{\code{model="Volatility"} .}
    }
@@ -124,17 +127,17 @@ components}
   \item{call}{actual function call}
 }
 \references{ 
-\item{ }{Polzehl, J. and Spokoiny, S. (2002). \emph{Varying coefficient 
+\item{ }{Polzehl, J. and Spokoiny, V. (2003). \emph{Varying coefficient 
 regression modeling 
-     by adaptive weights smoothing} Manuscript}
-\item{ }{Polzehl, J. and Spokoiny, S. (2002b). \emph{Local likelihood 
-modelling by adaptive weights smoothing}, WIAS-Preprint 787}
-\item{ }{ Polzehl, J. and Spokoiny, S. (2000). \emph{Adaptive Weights Smoothing
+     by adaptive weights smoothing}, WIAS-Preprint 818.}
+\item{ }{Polzehl, J. and Spokoiny, V. (2002). \emph{Local likelihood 
+modelling by adaptive weights smoothing}, WIAS-Preprint 787.}
+\item{ }{ Polzehl, J. and Spokoiny, V. (2000). \emph{Adaptive Weights Smoothing
      with applications to image restoration}, J.R.Statist.Soc. B, 62,
      Part 2, pp. 335-354}
  }
 \author{ Joerg Polzehl, \email{polzehl@wias-berlin.de}, 
-\url{http://www.wias-berlin.de/private/polzehl/adaptive-image-processing.html}}
+\url{http://www.wias-berlin.de/project-areas/stat/projects/adaptive-image-processing.html}}
 
 
 \seealso{ SEE ALSO \code{\link{aws}}, \code{\link{awsdens}}, \code{\link{awstindex}} }
@@ -159,7 +162,8 @@ f12 <- function(x,y){
 u0 <- 2*outer(x,x,"f12")
 set.seed(1)
 y <- matrix(rpois(u0,u0),128,128)
-yhat <- laws(y,model="Poisson",hmax=25)$theta
+# use larger hmax for good results
+yhat <- laws(y,model="Poisson",hmax=4)$theta
 par(mfrow=c(1,3),mar=c(3,3,3,.5),mgp=c(2,1,0))
 image(y,col=gray((0:255)/255))
 title("Observed image")
@@ -176,8 +180,8 @@ rm(u0,y,yhat,x)
 sigma <- c(rep(1,125),rep(2,125),rep(.5,125),rep(1,125))
 set.seed(1)
 x <- rnorm(sigma,0,sigma)
-tmpa <- laws(x,model="Volatility",u=sigma,graph=TRUE,hmax=2000,symmetric=FALSE)
-tmps <- laws(x,model="Volatility",u=sigma,hmax=2000)
+tmpa <- laws(x,model="Volatility",u=sigma,graph=TRUE,hmax=250)
+tmps <- laws(x,model="Volatility",u=sigma,hmax=250,symmetric=TRUE)
 par(mfrow=c(1,1),mar=c(3,3,3,1))
 plot(abs(x),col=3,xlab="time t",ylab=expression(abs( R[t] )))
 lines(tmpa$theta,col=1,lwd=2)

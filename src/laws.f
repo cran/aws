@@ -92,7 +92,7 @@ C
       real*8 y(n),hakt,theta(n),bi(n),ai(n),kernl(102),kerns(102),
      1      lamakt,lam
       integer i,j,ja,je,ih,iz
-      real*8 z,z1,wj,az,swj,swjy,bii,thetai
+      real*8 z,wj,az,swj,swjy,bii,thetai
       ih=hakt
       lam=lamakt*1d-2
       if(sym) lam=2*lam
@@ -132,7 +132,7 @@ C   Perform all iterations in local constant univariate aws
 C
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       subroutine gawsuni(y,n,hinit,hincr,hmax,lamakt,eta,theta, 
-     1                   bi,ai,kernl,kerns,biold,aiold,sym)
+     1                   bi,ai,kernl,kerns,biold,sym)
 C   
 C   y        observed values of regression function
 C   n        number of observations
@@ -147,25 +147,23 @@ C   ai       \sum \Psi^T Wi Y     (output)
 C   kernl    discretized localization kernel 
 C   kerns    discretized stochastic kernel 
 C   biold    working array to store old values of bi
-C   aiold    working array to store old values of ai
 C   sym      asymmetric or symmetric test (logical)
 C
       implicit logical (a-z)
       integer n
       logical sym
       real*8 y(n),hinit,hincr,hmax,theta(n),bi(n),ai(n),
-     1       kernl(102),kerns(102),lamakt,eta,biold(n),aiold(n)
+     1       kernl(102),kerns(102),lamakt,eta,biold(n)
       integer i
-      real*8 hakt,onemeta
+      real*8 hakt,onemeta,z
       hakt=hinit*hincr
       onemeta=1.d0-eta
 1     call lawsuni(y,n,hakt,lamakt,theta,bi,ai,kernl,kerns,sym)
       do 11 i=1,n
-         ai(i)=onemeta*ai(i)+eta*aiold(i)
+         z=onemeta*ai(i)+eta*biold(i)*theta(i)
          bi(i)=onemeta*bi(i)+eta*biold(i)
-         theta(i)=ai(i)/bi(i)
+         theta(i)=z/bi(i)
          biold(i)=bi(i)
-         aiold(i)=ai(i)
 11    continue
       hakt=hakt*hincr
       if(hakt.le.hmax) goto 1
@@ -176,7 +174,7 @@ C
 C   Initialize estimates in local constant bivariate aws (gridded)
 C
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-      subroutine iawsbi(y,n1,n2,hinit,bi,ai,kern)
+      subroutine iawsbi(y,n1,n2,hinit,bi,ai,kern,wght)
 C   
 C   y        observed values of regression function
 C   n1       number of grid-points in first dimension
@@ -188,7 +186,7 @@ C   kern     discretized localization kernel
 C
       implicit logical (a-z)
       integer n1,n2
-      real*8 y(n1,n2),hinit,bi(n1,n2),ai(n1,n2),kern(102)
+      real*8 y(n1,n2),hinit,bi(n1,n2),ai(n1,n2),kern(102),wght
       integer i1,j1,ja1,je1,i2,j2,ja2,je2,ih1,ih2,iz
       real*8 z,z1,z2,wj,az,swj,swjy,hinit2
       ih1=hinit
@@ -202,11 +200,11 @@ C
             do 2 j1=ja1,je1
                 z1=(i1-j1)
                 z1=z1*z1
-                ih2=dsqrt(hinit2-z1)
+                ih2=dsqrt(hinit2-z1)/wght
                 ja2=max0(1,i2-ih2)
                 je2=min0(n2,i2+ih2)
                 do 2 j2=ja2,je2
-                   z2=(i2-j2)
+                   z2=(i2-j2)*wght
                    z=1.d2*(z1+z2*z2)/hinit2
                    if(z.ge.1.d2) goto 2
                    iz=z
@@ -226,7 +224,7 @@ C   Perform one iteration in local constant bivariate aws (gridded)
 C
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       subroutine lawsbi(y,n1,n2,hakt,lamakt,theta,bi,ai,kernl,kerns,
-     1                  sym)
+     1                  sym,wght)
 C   
 C   y        observed values of regression function
 C   n1       number of grid-points in first dimension
@@ -244,7 +242,7 @@ C
       integer n1,n2
       logical sym
       real*8 y(n1,n2),hakt,theta(n1,n2),bi(n1,n2),ai(n1,n2),
-     1      kernl(102),kerns(102),lamakt,lam
+     1      kernl(102),kerns(102),lamakt,lam,wght
       integer i1,i2,j1,j2,ja1,ja2,je1,je2,ih1,ih2,iz
       real*8 z,z1,z2,wj,az,swj,swjy,bii,thetai,hakt2
       ih1=hakt
@@ -261,7 +259,7 @@ C
             do 2 j1=ja1,je1
                z1=(i1-j1)
                z1=z1*z1
-               ih2=dsqrt(hakt2-z1)
+               ih2=dsqrt(hakt2-z1)/wght
                ja2=max0(1,i2-ih2)
                je2=min0(n2,i2+ih2)
                do 2 j2=ja2,je2
@@ -274,7 +272,7 @@ C  first stochastic term
                   iz=z
                   az=z-iz
                   wj=kerns(iz+1)*(1-az)+kerns(iz+2)*az
-                  z2=(i2-j2)
+                  z2=(i2-j2)*wght
                   z=1.d2*(z1+z2*z2)/hakt2
                   if(z.ge.1.d2) goto 2
                   iz=z
@@ -294,7 +292,7 @@ C   Perform all iterations in local constant bivariate aws (gridded)
 C
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       subroutine gawsbi(y,n1,n2,hinit,hincr,hmax,lamakt,eta,theta,
-     1                   bi,ai,kernl,kerns,biold,aiold,sym)
+     1                   bi,ai,kernl,kerns,biold,sym,wght)
 C   
 C   y        observed values of regression function
 C   n1       number of grid-points in first dimension
@@ -316,21 +314,19 @@ C
       implicit logical (a-z)
       integer n1,n2
       logical sym
-      real*8 y(n1,n2),hinit,hincr,hmax,theta(n1,n2),bi(n1,n2),
-     1       ai(n1,n2),kernl(102),kerns(102),lamakt,eta,biold(n1,n2),
-     2       aiold(n1,n2)
+      real*8 y(n1,n2),hinit,hincr,hmax,theta(n1,n2),bi(n1,n2),wght,
+     1       ai(n1,n2),kernl(102),kerns(102),lamakt,eta,biold(n1,n2)
       integer i1,i2
-      real*8 hakt,onemeta
+      real*8 hakt,onemeta,z
       hakt=hinit*hincr
       onemeta=1-eta
-1     call lawsbi(y,n1,n2,hakt,lamakt,theta,bi,ai,kernl,kerns,sym)
+1     call lawsbi(y,n1,n2,hakt,lamakt,theta,bi,ai,kernl,kerns,sym,wght)
       do 11 i1=1,n1
          do 11 i2=1,n2
-            ai(i1,i2)=onemeta*ai(i1,i2)+eta*aiold(i1,i2)
+            z=onemeta*ai(i1,i2)+eta*biold(i1,i2)*theta(i1,i2)
             bi(i1,i2)=onemeta*bi(i1,i2)+eta*biold(i1,i2)
-            theta(i1,i2)=ai(i1,i2)/bi(i1,i2)
+            theta(i1,i2)=z/bi(i1,i2)
             biold(i1,i2)=bi(i1,i2)
-            aiold(i1,i2)=ai(i1,i2)
 11    continue
       hakt=hakt*hincr
       if(hakt.le.hmax) goto 1
@@ -341,7 +337,7 @@ C
 C   Initialize estimates in local constant trivariate aws (gridded)
 C
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-      subroutine iawstri(y,n1,n2,n3,hinit,bi,ai,kern)
+      subroutine iawstri(y,n1,n2,n3,hinit,bi,ai,kern,wghts)
 C   
 C   y        observed values of regression function
 C   n1       number of grid-points in first dimension
@@ -354,12 +350,15 @@ C   kern     discretized localization kernel
 C
       implicit logical (a-z)
       integer n1,n2,n3
-      real*8 y(n1,n2,n3),hinit,bi(n1,n2,n3),ai(n1,n2,n3),kern(102)
+      real*8 y(n1,n2,n3),hinit,bi(n1,n2,n3),ai(n1,n2,n3),kern(102),
+     1       wghts(2)
       integer i1,j1,ja1,je1,i2,j2,ja2,je2,i3,j3,ja3,je3,
      1       ih1,ih2,ih3,iz
-      real*8 z,z1,z2,z3,wj,az,swj,swjy,hinit2
+      real*8 z,z1,z2,z3,wj,az,swj,swjy,hinit2,wght2,wght3
       ih1=hinit
       hinit2=hinit*hinit
+      wght2=wghts(1)
+      wght3=wghts(2)
       do 1 i1=1,n1
          do 1 i2=1,n2
             do 1 i3=1,n3
@@ -370,17 +369,17 @@ C
                do 2 j1=ja1,je1
                   z1=(i1-j1)
                   z1=z1*z1
-                  ih2=dsqrt(hinit2-z1)
+                  ih2=dsqrt(hinit2-z1)/wght2
                   ja2=max0(1,i2-ih2)
                   je2=min0(n2,i2+ih2)
                   do 2 j2=ja2,je2
-                     z2=(i2-j2)
+                     z2=(i2-j2)*wght2
                      z2=z2*z2
-                     ih3=dsqrt(hinit2-z1-z2)
+                     ih3=dsqrt(hinit2-z1-z2)/wght3
                      ja3=max0(1,i3-ih3)
                      je3=min0(n3,i3+ih3)
                      do 2 j3=ja3,je3
-                        z3=(i3-j3)
+                        z3=(i3-j3)*wght3
                         z3=z3*z3
                         z=1.d2*(z1+z2+z3)/hinit2
                         if(z.ge.1.d2) goto 2
@@ -401,7 +400,7 @@ C   Perform one iteration in local constant three-variate aws (gridded)
 C
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       subroutine lawstri(y,n1,n2,n3,hakt,lamakt,theta,bi,ai,kernl,
-     1                  kerns,sym)
+     1                  kerns,sym,wghts)
 C   
 C   y        observed values of regression function
 C   n1       number of grid-points in first dimension
@@ -420,11 +419,13 @@ C
       integer n1,n2,n3
       logical sym
       real*8 y(n1,n2,n3),hakt,theta(n1,n2,n3),bi(n1,n2,n3),
-     1      ai(n1,n2,n3),kernl(102),kerns(102),lamakt,lam
+     1      ai(n1,n2,n3),kernl(102),kerns(102),lamakt,lam,wghts(2)
       integer i1,i2,i3,j1,j2,j3,ja1,ja2,ja3,je1,je2,je3,ih1,ih2,ih3,iz
-      real*8 z,z1,z2,z3,wj,az,swj,swjy,bii,thetai,hakt2
+      real*8 z,z1,z2,z3,wj,az,swj,swjy,bii,thetai,hakt2,wght2,wght3
       ih1=hakt
       hakt2=hakt*hakt
+      wght2=wghts(1)
+      wght3=wghts(2)
       lam=lamakt*1d-2
       if(sym) lam=2*lam
       do 1 i1=1,n1
@@ -438,13 +439,13 @@ C
                do 2 j1=ja1,je1
                   z1=(i1-j1)
                   z1=z1*z1
-                  ih2=dsqrt(hakt2-z1)
+                  ih2=dsqrt(hakt2-z1)/wght2
                   ja2=max0(1,i2-ih2)
                   je2=min0(n2,i2+ih2)
                   do 2 j2=ja2,je2
-                     z2=(i2-j2)
+                     z2=(i2-j2)*wght2
                      z2=z2*z2
-                     ih3=dsqrt(hakt2-z1-z2)
+                     ih3=dsqrt(hakt2-z1-z2)/wght3
                      ja3=max0(1,i3-ih3)
                      je3=min0(n3,i3+ih3)
                      do 2 j3=ja3,je3
@@ -457,7 +458,7 @@ C  first stochastic term
                         iz=z
                         az=z-iz
                         wj=kerns(iz+1)*(1-az)+kerns(iz+2)*az
-                        z3=(i3-j3)
+                        z3=(i3-j3)*wght3
                         z3=z3*z3
                         z=1.d2*(z1+z2+z3)/hakt2
                         if(z.ge.1.d2) goto 2
@@ -478,7 +479,7 @@ C   Perform all iterations in local constant three-variate aws (gridded)
 C
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       subroutine gawstri(y,n1,n2,n3,hinit,hincr,hmax,lamakt,eta,theta,
-     1                   bi,ai,kernl,kerns,biold,aiold,sym)
+     1                   bi,ai,kernl,kerns,biold,sym,wghts)
 C   
 C   y        observed values of regression function
 C   n1       number of grid-points in first dimension
@@ -503,20 +504,20 @@ C
       logical sym
       real*8 y(n1,n2,n3),hinit,hincr,hmax,theta(n1,n2,n3),bi(n1,n2,n3),
      1       ai(n1,n2,n3),kernl(102),kerns(102),lamakt,eta,
-     2       biold(n1,n2,n3),aiold(n1,n2,n3)
+     2       biold(n1,n2,n3),wghts
       integer i1,i2,i3
-      real*8 hakt,onemeta
+      real*8 hakt,onemeta,z
       hakt=hinit*hincr
       onemeta=1-eta
-1     call lawstri(y,n1,n2,n3,hakt,lamakt,theta,bi,ai,kernl,kerns,sym)
+1     call lawstri(y,n1,n2,n3,hakt,lamakt,theta,bi,ai,kernl,kerns,sym,
+     1             wghts)
       do 11 i1=1,n1
          do 11 i2=1,n2
             do 11 i3=1,n3
-            ai(i1,i2,i3)=onemeta*ai(i1,i2,i3)+eta*aiold(i1,i2,i3)
+            z=onemeta*ai(i1,i2,i3)+eta*biold(i1,i2,i3)*theta(i1,i2,i3)
             bi(i1,i2,i3)=onemeta*bi(i1,i2,i3)+eta*biold(i1,i2,i3)
-            theta(i1,i2,i3)=ai(i1,i2,i3)/bi(i1,i2,i3)
+            theta(i1,i2,i3)=z/bi(i1,i2,i3)
             biold(i1,i2,i3)=bi(i1,i2,i3)
-            aiold(i1,i2,i3)=ai(i1,i2,i3)
 11    continue
       hakt=hakt*hincr
       if(hakt.le.hmax) goto 1
@@ -549,7 +550,7 @@ C     kernl      discretized localization kernel
 C     dmat       working array
 C
       implicit logical (a-z)
-      integer n,dp1,dp2,i,j,k,info,je,ja,m,o,iz
+      integer n,dp1,dp2,i,j,k,info,je,ja,iz
       real*8 bi(dp2,n),ai(dp1,n),theta(dp1,n),dmat(dp1,dp1),ha2,d
       real*8 x(n),xij,xi,z,epij,y(n),hinit,ha,kernl(102),az
 C     loop over i=1,n
@@ -647,7 +648,7 @@ C     psix,psiy                working memory
 C     sym      asymmetric or symmetric test (logical)
 C     
 C      implicit logical (a-z)
-      integer n,dp1,dp2,i,j,k,l,info,iz,je,ja,o,nwij,pm  
+      integer n,dp1,dp2,i,j,k,l,info,iz,je,ja,nwij 
       logical sym     
       real*8 x(n),y(n),psix(dp2),psiy(dp1),theta(dp1,n),kerns(102),
      1 bi(dp2,n),bin(dp2,n),ain(dp1,n),lam,kernl(102),
@@ -867,7 +868,7 @@ C   Initialize estimates in bivariate local polynomial aws (gridded)
 C
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       subroutine ipawsbi(n1,n2,dp1,dp2,y,hinit,bi,ai,theta,
-     1                    kernl,dmat,si,siy,ind)
+     1                    kernl,dmat,si,siy,ind,wght)
 C    
 C     n1         number of points in first dimension
 C     n2         number of points in second dimension
@@ -888,7 +889,7 @@ C
      1        ih1,ih2,j,l,ind(dp1,dp1)
       real*8 y(n1,n2),bi(dp2,n1,n2),ai(dp1,n1,n2),
      1      si(dp2),siy(dp1),kernl(102),dmat(dp1,dp1),theta(dp1,n1,n2),
-     2      z11,z12,z22,d,z,epij,hinit,ha,ha2,az,z1,z2,epijy
+     2      z11,z12,z22,d,z,epij,hinit,ha,ha2,az,z1,z2,epijy,wght
 C     loop over i1=1,n1 and i2=1,n2
       do 1 i1=1,n1
          do 1 i2=1,n2
@@ -905,11 +906,11 @@ C  first fill si and siy with 0's
             do 11 j1=ja1,je1
                 z1=(i1-j1)
                 z11=z1*z1
-                ih2=dsqrt(ha2-z11)
+                ih2=dsqrt(ha2-z11)/wght
                 ja2=max0(1,i2-ih2)
                 je2=min0(n2,i2+ih2)
                 do 11 j2=ja2,je2
-                   z2=(i2-j2)
+                   z2=(i2-j2)*wght
                    z22=z2*z2
                    z12=z1*z2
                    z=1.d2*(z11+z22)/ha2
@@ -982,7 +983,7 @@ C
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       subroutine lpawsbi(n1,n2,dp1,dp2,y,theta,bi,bin,bi0,ain,lam,tau,
      1    h,kernl,kerns,dmat,dmati,dmat0,thij,thji,psix,
-     2    si,si0,siy,sym,ind)
+     2    si,si0,siy,sym,ind,wght)
 C
 C     n1         number of points in first dimension
 C     n2         number of points in second dimension
@@ -1012,12 +1013,12 @@ C      implicit logical (a-z)
      1        iz,j,ih1,ih2,ind(dp1,dp1),m
       logical sym
       real*8 bi(dp2,n1,n2),bi0(dp2,n1,n2),bin(dp2,n1,n2),
-     1       ain(dp1,n1,n2),kerns(102),
+     1       ain(dp1,n1,n2),kerns(102),wght,
      2       theta(dp1,n1,n2),dmat(dp1,dp1),siy(dp1),dmati(dp1,dp1),
      3       dmat0(dp1,dp1),thij(dp1),
      4       thji(dp1),y(n1,n2),h,lam,tau,kernl(102),psix(dp2),
-     5       si(dp2),si0(dp2),sii,wijy,d,z,epij,z11,z12,z22,ha2,pm,
-     6       lambda,tauakt,gammaij,gammaji,wij,gamma0,gamma0j,s0i,xi,
+     5       si(dp2),si0(dp2),sii,wijy,d,z,epij,z11,z12,z22,ha2,
+     6       lambda,tauakt,gammaij,wij,gamma0,s0i,
      7       az,z1,z2
 C     
 C     in case of dp1==1  lawsbi should be called  (p=0)
@@ -1068,11 +1069,11 @@ C
             do 101 j1=ja1,je1
                 z1=(i1-j1)
                 z11=z1*z1
-                ih2=dsqrt(ha2-z11)
+                ih2=dsqrt(ha2-z11)/wght
                 ja2=max0(1,i2-ih2)
                 je2=min0(n2,i2+ih2)
                 do 102 j2=ja2,je2
-                   z2=(i2-j2)
+                   z2=(i2-j2)*wght
                    z22=z2*z2
                    z12=z1*z2
 C          first compute location part
@@ -1267,9 +1268,8 @@ C     dmat       working arrays
 C
 C      implicit logical (a-z)
       integer n,dp1,dp2
-      logical sym
       real*8 ai(dp1,n),bi(dp2,n),theta(dp1,n),dmat(dp1,dp1)
-      integer i,j,k,info,l,ind(dp1,dp1)
+      integer i,j,k,info,ind(dp1,dp1)
       real*8 d
       do 1 i=1,n
          do 11 k=1,dp1
@@ -1329,10 +1329,10 @@ C     dmat       working array
 C     xij        working vector 
 C     info       error indicator
 C
-      integer n,dp1,dp2,i,j,k,l,m,info,ja,o,iz,px,ihinit,
-     1        nn(ihinit,n),ij
+      integer n,dp1,dp2,i,j,k,l,m,info,ja,iz,px,ihinit,
+     1        nn(ihinit,n)
       real*8 bi(dp2,n),ai(dp1,n),theta(dp1,n),dmat(dp1,dp1),ha2,az,d,
-     1    x(px,n),xij(dp1),xi,z,epij,y(n),hinit,ha,kernl(102),
+     1    x(px,n),xij(dp1),z,epij,y(n),hinit,ha,kernl(102),
      2    distm(ihinit,n)
 C     loop over i=1,n
 C     use points within (xi-hinit,xi+hinit) but at least dp1 points
@@ -1429,7 +1429,7 @@ C     psix,psiy,xij                working memory
 C     sym        asymmetric or symmetric test (logical)
 C     
       implicit logical (a-z)
-      integer n,dp1,dp2,px,i,j,k,l,info,iz,je,ja,o,nwij,ij,
+      integer n,dp1,dp2,px,i,j,k,l,info,iz,ja,nwij,
      1        ihakt,m,nn(ihakt,n)      
       logical sym
       real*8 x(px,n),y(n),psix(dp1),psiy(dp1),theta(dp1,n),kerns(102),
@@ -1642,10 +1642,10 @@ C     dmat       working array
 C     xij        working vector 
 C     info       error indicator
 C
-      integer n,dp1,dp2,i,j,k,l,m,info,ja,o,iz,px,ihinit,
+      integer n,dp1,dp2,i,j,k,l,m,info,ja,iz,px,ihinit,
      1        nn(ihinit,n),ij
       real*8 bi(dp2,n),ai(dp1,n),theta(dp1,n),dmat(dp1,dp1),ha2,az,d,
-     1    x(px,n),xij(dp1),xi,z,epij,y(n),hinit,ha,kernl(102)
+     1    x(px,n),xij(dp1),z,epij,y(n),hinit,ha,kernl(102)
 C     loop over i=1,n
 C     use points within (xi-hinit,xi+hinit) but at least dp1 points
       do 1 i=1,n
@@ -1737,7 +1737,7 @@ C     psix,psiy,xij                working memory
 C     sym        asymmetric or symmetric test (logical)
 C     
       implicit logical (a-z)
-      integer n,dp1,dp2,px,i,j,k,l,info,iz,je,ja,o,nwij,ij,
+      integer n,dp1,dp2,px,i,j,k,l,info,iz,ja,nwij,ij,
      1        ihakt,m,nn(ihakt,n)      
       logical sym
       real*8 x(px,n),y(n),psix(dp1),psiy(dp1),theta(dp1,n),kerns(102),

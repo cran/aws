@@ -9,7 +9,7 @@
   applications may be interesting only in 2D and 3D.
 }
 \usage{
-awsdens(y, ngrid = 100, nempty = 10, qlambda = NULL, eta = 0.5, 
+awsdens(y, ngrid = NULL, nempty = NULL, qlambda = NULL, eta = 0.5, 
         lkern = "Triangle", fu = NULL, hinit = 1, hincr = 1.2, 
     hmax = NULL, graph = FALSE, demo = FALSE, symmetric = TRUE)
 }
@@ -85,10 +85,10 @@ awsdens(y, ngrid = 100, nempty = 10, qlambda = NULL, eta = 0.5,
   \item{call }{actual function call}
 }
 \references{ 
-\item{ }{    Polzehl, J. and Spokoiny, S. (2002b). 
+\item{ }{    Polzehl, J. and Spokoiny, V. (2002). 
 \emph{Local likelihood modelling by adaptive weights smoothing}, 
 WIAS-Preprint 787 } 
-   \item{ }{  Polzehl, J. and Spokoiny, S. (2000). \emph{Adaptive Weights Smoothing
+   \item{ }{  Polzehl, J. and Spokoiny, V. (2000). \emph{Adaptive Weights Smoothing
      with applications to image restoration}, J.R.Statist.Soc. B, 62,
      Part 2, pp.335-354}
 \item{ }{
@@ -132,7 +132,7 @@ fx12 <- f1(x1,x2)
 ind <- (runif(m)<f1(x1,x2)/.385/7.5)
 n <- 2500
 y <- rbind(x1[ind],x2[ind])[,1:n]
-tmp <- awsdens(y,120,10,hmax=25)
+tmp <- awsdens(y,120,10,hmax=5)
 image(tmp$xgrid[[1]],tmp$xgrid[[2]],tmp$dens,xlab="x1",ylab="x2",col=gray(.5+(255:0)/511),lwd=2)
 #   thats the estimated density on the grid
 lines(seq(0,1,.01),sqrt(1-seq(0,1,.01)^2),col=2,lty=2,lwd=2)
