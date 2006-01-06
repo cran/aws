@@ -3,8 +3,7 @@
 \title{Three-dimensional Adaptive Weights Smoothing}
 \description{Performes three-dimensional Adaptive Weigths Smoothing (depreciated version, use aws instead)}
 \usage{awstri(y, lambda=3, gamma=1.3, eta =4, s2hat = NULL, kstar = length(radii),
-       rmax=max(radii), weight = c(1,1,1), radii = 
-       c((1:4)/2,2.3,(5:12)/2,7:9,10.5,12,13.5), control="dyadic"}
+       rmax=max(radii), weight = c(1,1,1), radii = c((1:4)/2,2.3,(5:12)/2,7:9,10.5,12,13.5), control="dyadic")}
 \arguments{
 \item{y}{array of observed values}
 \item{lambda}{main smoothing parameter (should be approximately 3)}

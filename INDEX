@@ -1,10 +1,10 @@
+aws                     Local polynomial Adaptive Weights Smoothing for
+                        regression with additive errors
 awsbi                   Two-dimensional Adaptive Weights Smoothing
 awsdens                 local constant density estimation
 awsh                    Univariate local polynomial Adaptive Weights
                         Smoothing for regression with heteroscedastic
                         additive errors
-aws                     Local polynomial Adaptive Weights Smoothing
-                        for regression with additive errors
 awstindex               Tail index estimation
 awstri                  Three-dimensional Adaptive Weights Smoothing
 awsuni                  One-dimensional Adaptive Weights Smoothing
