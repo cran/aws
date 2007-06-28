@@ -3,10 +3,10 @@
 #    in regression models with additive sub-Gaussian errors               
 #    local constant and local polynomial approach                         
 #
-#    Copyright (C) 2002 Weierstrass-Institut für                          
+#    Copyright (C) 2002 Weierstrass-Institut fï¿½r                          
 #                       Angewandte Analysis und Stochastik (WIAS)         
 #
-#    Author:  Jörg Polzehl                                                
+#    Author:  Jï¿½rg Polzehl                                                
 #
 #  This program is free software; you can redistribute it and/or modify   
 #  it under the terms of the GNU General Public License as published by   

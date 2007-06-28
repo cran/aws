@@ -221,8 +221,6 @@ awsbi <- function(y, lambda=3, gamma=1.3, eta = 4,
 #   demomode - only active if graph=TRUE, causes the program to wait after displaying the 
 #           results of an iteration step
 #
-        storage.mode(y) <- "single"
-        storage.mode(s2hat) <- "single"
         radii <- radii[radii<=rmax]
         kstar <- min(kstar,length(radii))
         args <- list(lambda=lambda,gamma=gamma,eta=eta,s2hat = s2hat, 
@@ -251,14 +249,12 @@ awsbi <- function(y, lambda=3, gamma=1.3, eta = 4,
            cat("Estimated variance:",s2hat,"\n")
            }
 # expand s2hat in case of homogeneous variance
-        if(length(as.vector(s2hat)) == 1) s2hat <- matrix(as.single(rep(s2hat, 
-                        n)), ncol = ny) 
-        storage.mode(s2hat) <- "single"
+        if(length(as.vector(s2hat)) == 1) s2hat <- matrix(rep(s2hat, 
+                        n), ncol = ny) 
         controls <- numeric(2*n)
         dim(controls) <- c(2,nx,ny)
         controls[1,,] <- y-eta*sqrt(s2hat)
         controls[2,,] <- y+eta*sqrt(s2hat)
-        storage.mode(controls) <- "single"
         yhat <- y
         minsk <- sk <- s2hat
         if(!is.null(u0)) {
@@ -278,8 +274,8 @@ awsbi <- function(y, lambda=3, gamma=1.3, eta = 4,
                 as.single(s2hat),
                 sk = as.single(sk),
                 as.single(kiiinit + 0.001),PACKAGE="aws")
-        yhat <- as.single(z$yhat)
-        sk <- as.single(z$sk)
+        yhat <- z$yhat
+        sk <- z$sk
         if(graph) {
         for(k in 2:kstar) {
                 z <- .Fortran("locbiw",
@@ -299,9 +295,9 @@ awsbi <- function(y, lambda=3, gamma=1.3, eta = 4,
                         as.single(eta),
                         as.single(gamma),
                         as.single(kern),PACKAGE="aws")[c("yhat","sk","controls")]
-                yhat <- as.single(z$yhat)
-                sk <- as.single(z$sk)
-                controls <- as.single(z$controls)
+                yhat <- z$yhat
+                sk <- z$sk
+                controls <- z$controls
                 minsk <- pmin(sk, minsk)
                 if(!is.null(u0)) {
                         l2[k] <- mean((yhat - u0)^2)
@@ -351,8 +347,8 @@ awsbi <- function(y, lambda=3, gamma=1.3, eta = 4,
                         cat("Iteration ", kstar-1, "nu=", iii[kstar], "MSE", l2[kstar],
                                 "MAE", r2[kstar], "\n")
                         }
-        list(yhat = matrix(as.single(z$yhat), ncol = ny),
-             shat = matrix(as.single(z$sk), ncol = ny),
+        list(yhat = matrix(z$yhat, ncol = ny),
+             shat = matrix(z$sk, ncol = ny),
              nu = iii,  args=args)
         }
 }
@@ -389,8 +385,6 @@ awstri <- function(y, lambda = 3, gamma = 1.3 , eta = 4, s2hat = NULL,
 #
 # Speicherschonende Variante
 # mit Fortran requires  dyn.load.shared("./image3.so")
-        storage.mode(y) <- "single"
-        storage.mode(s2hat) <- "single"
         radii <- radii[radii<=rmax]
         kstar <- min(kstar,length(radii))
         args <- list(lambda=lambda,gamma=gamma,eta=eta,s2hat = s2hat, 
@@ -416,14 +410,13 @@ awstri <- function(y, lambda = 3, gamma = 1.3 , eta = 4, s2hat = NULL,
         if(length(s2hat) == 0) s2hat <- (IQR(diff(y))/1.908)^2
         if(length(as.vector(s2hat)) == 1) homogeneous <- TRUE
         #now precompute neighbourhoods
-        yhat <- as.single(y)
+        yhat <- y
         if(homogeneous) minsk <- sk <- array(s2hat,dim(y))
     else minsk <- sk <- s2hat
         controls <- numeric(2*n)
         dim(controls) <- c(2,nx,ny,nz)
         controls[1,,,] <- y-eta*sqrt(s2hat)
         controls[2,,,] <- y+eta*sqrt(s2hat)
-        storage.mode(controls) <- "single"
         if(homogeneous){
         z <- .Fortran("loctria0",
                 as.integer(kstar),
@@ -466,7 +459,7 @@ awstri <- function(y, lambda = 3, gamma = 1.3 , eta = 4, s2hat = NULL,
                       as.single(weight),
                       as.single(kern),PACKAGE="aws")[c("yhat","sk")]
                       }
-    list(yhat = array(as.single(z$yhat), dim = dy), shat = array(as.single(z$sk),
+    list(yhat = array(z$yhat, dim = dy), shat = array(z$sk,
          dim = dy), args = args)
 }
 

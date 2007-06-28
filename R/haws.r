@@ -62,6 +62,7 @@ return("this is heteroscedastics univariate regression only")
 # not gridded
 return("currently this is heteroscedastics univariate regression on a grid only")
 ddim <- 1
+dx <- dim(x)
 if(is.null(dx)) {
 #
 #    order data by order of x
