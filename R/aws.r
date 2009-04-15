@@ -1,516 +1,587 @@
-############################################################################
 #
-# univariate Adaptive Weights Smoothing
+#    R - function  aws  for likelihood  based  Adaptive Weights Smoothing (AWS)
+#    for local constant Gaussian, Bernoulli, Exponential, Poisson, Weibull and  
+#    Volatility models                                                         
 #
-# Copyright Weierstrass Instiute for Applied Analysis and Stochastics 
-#           J. Polzehl 2000
-############################################################################
-
-awsuni <- function(y, lambda=3, gamma=1.3, eta =4, s2hat = NULL, kstar =
-length(radii),radii = c(1:8,(5:12)*2,(7:12)*4,(7:12)*8,(7:10)*16,(6:8)*32,
-         (5:8)*64,(5:8)*128,(5:8)*256),rmax=max(radii),
-         graph = FALSE,z0 = NULL, eps = 1e-08, control="dyadic",demomode=FALSE)
+#    emaphazises on the propagation-separation approach 
+#
+#    Copyright (C) 2006 Weierstrass-Institut fuer
+#                       Angewandte Analysis und Stochastik (WIAS)
+#
+#    Author:  Joerg Polzehl
+#
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307,
+#  USA.
+#
+#     default parameters:  see function setawsdefaults
+#       
+aws <- function(y,hmax=NULL,aws=TRUE,memory=FALSE,family="Gaussian",
+                lkern="Triangle",homogen=TRUE,aggkern="Uniform",
+                sigma2=NULL,shape=NULL,scorr=0,
+		ladjust=1,wghts=NULL,u=NULL,graph=FALSE,demo=FALSE,
+                testprop=FALSE)
 {
-# requires  dyn.load("aws.so") 
 #
-#   y - observed values (ordered by value of independent variable)
-#   lambda - main smoothing parameter (should be approximately 3)
-#   gamma  - allow for increase of variances (over minsk) by factor gamma
-#   eta   - main control parameter (should be approximately 4)   
-#   s2hat - initial variance estimate (if available,
-#           can be either a number (homogeneous case), a vector of same length 
-#           as y (inhomogeneous variance) or NULL (a homogeneous variance estimate
-#           will be generated in this case)
-#   kstar - number of iterations to perform (set to min(kstar, length(radii)))
-#   radii - radii of neighbourhoods used
-#   graph - logical, if TRUE progress (for each iteration) is illustrated grahically,
-#           if FALSE the program runs until the final estimate is obtained 
-#           (much faster !!!)
-#   z0    - allows for submission of "true" values for illustration puposes only
-#           if graph=TRUE  MSE and MAE are reported for each iteration step
-#   eps - stop iteration if ||(yhatnew - yhat)||^2 < eps * sum(s2hat)
-#   control - the control step is performed in either a dyadic sceme
-#           ("dyadic") or using all previous estimates (otherwise)
-#   demomode - only active if graph=TRUE, causes the program to wait after displaying the 
-#           results of an iteration step
+#   this version uses neighborhoods with an increase in potential 
+#   variance reduction by a factor of 1.25 from one iteration step 
+#   to the next
 #
-        radii <- radii[radii<=rmax]
-        kstar <- min(kstar,length(radii))
-        args <- list(lambda=lambda,gamma=gamma,eta=eta,s2hat = s2hat, 
-                     kstar = kstar, radii=radii, rmax=rmax)
-        if(graph) oldpar <- par(mfrow=c(1,3))
-        ind <- trunc(radii)
-        ind <- ind[ind>0]
-        if(is.null(ind)) ind <- 1:kstar
-        kstar <- min(kstar, length(ind))
-        newcontr <- numeric(kstar)
-        if(control=="dyadic") newcontr[2^(0:(log(kstar)/log(2)))] <- 1
-        else newcontr[1:kstar] <- 1
-        cat("Control sceme: ",newcontr,"\n")
-        n <- length(y)
-        x <- 1:n
-        lam0 <- lambda
-        lambda <- lambda^2
-        gamma <- gamma^2
-# generate a variance estimate if needed
-        if(is.null(s2hat))
-                s2hat <- (IQR(diff(y))/1.908)^2
-# expand variance estimate in case of homogeneous variance
-        if(length(s2hat) == 1)
-                s2hat <- rep(s2hat, n)
-# now initialize 
-        yhat <- y
-        sk <- skmin <- s2hat
-        kern <- exp( - seq(0, 6, 0.3))
-        lambda.3 <- lambda * 0.3
-        controls <- numeric(2*n)
-        dim(controls) <- c(2,n)
-        controls[1,] <- y-eta*sqrt(s2hat)
-        controls[2,] <- y+eta*sqrt(s2hat)
-        if(ind[1] > 1) {
-# nontrivial first neighbourhood (should only be used for small signal/noise)
-                z <- .Fortran("locuini2",
-                        as.integer(n),
-                        as.single(y),
-                        yhat = as.single(y),
-                        sk = as.single(sk),
-                        as.integer(ind[1] - 1),
-                        as.single(numeric(2 * ind[1] - 1)),
-                        as.single(numeric(2 * ind[1] - 1)),
-                        as.single(s2hat),PACKAGE="aws")
-                yhat <- z$yhat
-                sk <- skmin <- z$sk
-                if(graph) {
-                        plot(x, y)
-                        if(!is.null(z0)) lines(x, z0, col = 3)
-                        lines(x, yhat, col = 2)
-                        lines(x, yhat-sqrt(lambda*sk),col=4,lty=2)
-                        lines(x, yhat+sqrt(lambda*sk),col=4,lty=2)
-                        if(!is.null(z0)) lines(x, yhat, col = 2)
-                        title(paste("Estimate  Iteration ", 0,
-                        "  N(U) = ", 2 * ind[1] - 1))
-                        ylim <- range(y - yhat)
-                        if(!is.null(z0)) ylim <- range(ylim, z0 - yhat)
-                        plot(x, y - yhat, ylim = ylim)
-                        if(!is.null(z0)) lines(x, z0 - yhat, col = 3)
-                        lines(x, yhat - yhat, col = 2)
-                        title("Residuals")
-                        plot(x, sqrt(sk))
-                        title(paste("sigmahat\n l=", sqrt(lambda), "g=", sqrt(
-                                gamma), "shat=", signif(sqrt(mean(s2hat)), 3)))
-            if(demomode) {
-            cat("press ENTER to continue")
-            readline()
-            }
-                }
-        }
-        if(graph) {
-           if(!is.null(z0))
-                cat("Iteration ", 0, "MSE:", mean((yhat - z0)^2), "MAE:", 
-                        mean(abs(yhat - z0)), "\n")
-           for(k in 2:kstar) {
-                yhatold <- yhat
-                z <- .Fortran("locuniw",
-                        as.integer(n),
-                        as.single(y),
-                        as.single(yhat),
-                        yhat = as.single(yhat),
-                        as.single(sk),
-                        as.single(s2hat),
-                        sk = as.single(sk),
-                        controls=as.single(controls),
-                        as.integer(newcontr[k]),
-                        as.single(skmin),
-                        as.integer(ind[k] - 1),
-                        as.single(lambda.3),
-                        as.single(eta),
-                        as.single(gamma),
-                        as.single(kern),PACKAGE="aws")[c("yhat","sk","controls")]
-                yhat <- z$yhat
-                sk <- z$sk
-                controls <- z$controls
-                skmin <- pmin(skmin, sk)
-                if(!is.null(z0))
-                cat("Iteration ", k-1, "MSE:", mean((yhat - z0)^2), "MAE:",
-                        mean(abs(yhat - z0)), "\n")
-                plot(x, y)
-                if(!is.null(z0)) lines(x, z0, col = 3)
-                lines(x, yhat, col = 2)
-                lines(x, yhat-sqrt(lambda*sk),col=4,lty=2)
-                lines(x, yhat+sqrt(lambda*sk),col=4,lty=2)
-                if(!is.null(z0)) lines(x, yhat, col = 2)
-                title(paste("Estimate  Iteration ", k-1, "  N(U) = ", 2 * ind[k] - 1))
-                ylim <- range(y - yhat)
-                if(!is.null(z0)) ylim <- range(ylim, z0 - yhat)
-                plot(x, y - yhat, ylim = ylim)
-                if(!is.null(z0)) lines(x, z0 - yhat, col = 3)
-                lines(x, yhat - yhat, col = 2)
-                title("Residuals")
-                plot(x, sqrt(sk))
-                title(paste("sigmahat    mean(shat)=", 
-                      signif(sqrt(mean(sk)), 3)))
-                if(sum((yhatold - yhat)^2) <= sum(eps * s2hat)) break
-            if(demomode) {
-            cat("press ENTER to continue")
-            readline()
-            }
-                }
-             par(oldpar)
-        }
-        else {
-                z <- .Fortran("locunial",
-                        as.integer(kstar),
-                        as.integer(n),
-                        as.single(y),
-                        as.single(yhat),
-                        yhat = as.single(yhat),
-                        as.single(sk),
-                        as.single(s2hat),
-                        sk = as.single(sk),
-                        controls=as.single(controls),
-                        as.integer(newcontr),
-                        as.single(skmin),
-                        as.integer(ind),
-                        as.single(lambda.3),
-                        as.single(eta),
-                        as.single(gamma),
-                        as.single(kern),
-                        as.single(sum(eps * s2hat)),PACKAGE="aws")[c("yhat","sk")]
-                yhat <- z$yhat
-                sk <- z$sk
-        }
-        if(!is.null(z0))
-                cat("kstar=", kstar, "MSE:", mean((yhat - z0)^2), "MAE:",
-                        mean(abs(yhat - z0)), "\n")
-        list(yhat = yhat, shat = sqrt(sk),args=args)
+#    wghts is interpreted as voxel extensions ..., wghts for nonexisting dimensions are are set to INFTY
+#
+#    first check arguments and initialize
+#
+args <- match.call()
+dy<-dim(y)
+if(length(dy)>3) stop("AWS for more than 3 dimensional grids is not implemented")
+#
+#   set appropriate defaults
+#
+if(is.null(wghts)) wghts <- c(1,1,1)
+wghts <- switch(length(dy),c(0,0),c(wghts[1]/wghts[2],0),wghts[1]/wghts[2:3])
+if(is.null(wghts)) wghts <- c(0,0)
+cpar<-setawsdefaults(dy,mean(y),family,lkern,aggkern,aws,memory,ladjust,hmax,shape,wghts)
+lambda <- cpar$lambda
+hmax <- cpar$hmax
+shape <- cpar$shape
+d <- cpar$d
+n<-length(y)
+# 
+#   family dependent transformations that depend on the value of family
+#
+zfamily <- awsfamily(family,y,sigma2,shape,scorr,lambda,cpar)
+cpar <- zfamily$cpar
+lambda <- zfamily$lambda
+sigma2 <- zfamily$sigma2
+h0 <- zfamily$h0
+y <- zfamily$y
+lkern <- cpar$lkern
+rm(zfamily)
+if(demo&& !graph) graph <- TRUE
+# now check which procedure is appropriate
+##  this is the version on a grid
+n <- length(y)
+n1 <- switch(d,n,dy[1],dy[1])
+n2 <- switch(d,1,dy[2],dy[2])
+n3 <- switch(d,1,1,dy[3])
+#
+#    Initialize  for the iteration
+#
+maxvol <- cpar$maxvol
+k <- cpar$k
+kstar <- cpar$kstar
+tobj<-list(bi= rep(1,n), bi2= rep(1,n), theta= y/shape, fix=rep(FALSE,n))
+zobj<-list(ai=y, bi0= rep(1,n))
+hhom <- rep(1,n)
+biold<-rep(1,n)
+if(family=="Gaussian"&length(sigma2)==n) vred<-rep(1,n)
+mae<-NULL
+lambda0<-1e50 # that removes the stochstic term for the first step, Initialization by kernel estimates
+if(testprop) {
+#
+#  prepare to  check for alpha in propagation condition (to adjust value of lambda using parameter ladjust)
+#
+       if(is.null(u)) u <- 0
+       cpar <- c(cpar, list(n1=n1,n2=n2,n3=n3,n=n1*n2*n3,family=family,u=u))
+       propagation <- NULL
+    } 
+#
+#   iteratate until maximal bandwidth is reached
+#
+cat("Progress:")
+total <- cumsum(1.25^(1:kstar))/sum(1.25^(1:kstar))
+while (k<=kstar) {
+      hakt0 <- gethani(1,1.25*hmax,lkern,1.25^(k-1),wghts,1e-4)
+      hakt <- gethani(1,1.25*hmax,lkern,1.25^k,wghts,1e-4)
+      cat("step",k,"hakt",hakt,"\n")
+if(lkern==5) {
+#  assume  hmax was given in  FWHM  units (Gaussian kernel will be truncated at 4)
+    hakt <- hakt*0.42445*4
+    }
+dlw<-(2*trunc(hakt/c(1,wghts))+1)[1:d]
+if(family=="Gaussian"&scorr[1]>=0.1) lambda0<-lambda0*Spatialvar.gauss(hakt0/0.42445/4,h0,d)/Spatialvar.gauss(hakt0/0.42445/4,1e-5,d)
+# Correction for spatial correlation depends on h^{(k)} 
+if(family=="Gaussian"&length(sigma2)==n){
+# heteroskedastic Gaussian case
+zobj <- .Fortran("chaws",as.double(y),
+                       as.logical(tobj$fix),
+                       as.double(sigma2),
+                       as.integer(n1),
+                       as.integer(n2),
+                       as.integer(n3),
+                       hakt=as.double(hakt),
+                       as.double(lambda0),
+                       as.double(tobj$theta),
+                       bi=as.double(tobj$bi),
+		       bi2=double(n),
+                       bi0=as.double(zobj$bi0),
+		       vred=double(n),
+                       ai=as.double(zobj$ai),
+                       as.integer(cpar$mcode),
+                       as.integer(lkern),
+	               as.double(0.25),
+		       double(prod(dlw)),
+		       as.double(wghts),
+		       PACKAGE="aws",DUP=FALSE)[c("bi","bi0","bi2","vred","ai","hakt")]
+vred[!tobj$fix]<-zobj$vred[!tobj$fix]
+} else {
+# all other cases
+zobj <- .Fortran("caws",as.double(y),
+                       as.logical(tobj$fix),
+                       as.integer(n1),
+                       as.integer(n2),
+                       as.integer(n3),
+                       hakt=as.double(hakt),
+                       hhom=as.double(hhom),
+                       as.double(lambda0),
+                       as.double(tobj$theta),
+                       bi=as.double(tobj$bi),
+		       bi2=double(n),
+                       bi0=as.double(zobj$bi0),
+                       ai=as.double(zobj$ai),
+                       as.integer(cpar$mcode),
+                       as.integer(lkern),
+                       as.double(0.25),
+		       double(prod(dlw)),
+		       as.double(wghts),
+		       PACKAGE="aws",DUP=FALSE)[c("bi","bi0","bi2","ai","hakt","hhom")]
+}
+if(family%in%c("Bernoulli","Poisson")) zobj<-regularize(zobj,family)
+dim(zobj$ai)<-dy
+biold <- zobj$bi0
+tobj<-updtheta(zobj,tobj,cpar)
+dim(tobj$theta)<-dy
+dim(tobj$bi)<-dy
+dim(tobj$eta)<-dy
+dim(tobj$fix)<-dy
+if(homogen) hhom <- zobj$hhom
+#
+#  if testprop == TRUE
+#  check alpha in propagation condition (to adjust value of lambda)
+#  
+if(testprop) propagation <- awstestprop(y,family,tobj,zobj,sigma2,hakt,cpar,u,propagation)
+if(graph){
+#
+#     Display intermediate results if graph == TRUE
+#
+if(d==1){ 
+oldpar<-par(mfrow=c(1,2),mar=c(3,3,3,.2),mgp=c(2,1,0))
+plot(y,ylim=range(y,tobj$theta),col=3)
+if(!is.null(u)) lines(u,col=2)
+lines(tobj$theta,lwd=2)
+title(paste("Reconstruction  h=",signif(hakt,3)))
+plot(tobj$bi,type="l",ylim=range(0,tobj$bi))
+lines(tobj$eta*max(tobj$bi),col=2)
+lines(hhom/max(hhom)*max(tobj$bi),col=3)
+title("Sum of weights, eta and hhom")
+} 
+if(d==2){ 
+oldpar<-par(mfrow=c(2,2),mar=c(1,1,3,.25),mgp=c(2,1,0))
+image(y,col=gray((0:255)/255),xaxt="n",yaxt="n")
+title(paste("Observed Image  min=",signif(min(y),3)," max=",signif(max(y),3)))
+image(tobj$theta,col=gray((0:255)/255),xaxt="n",yaxt="n")
+title(paste("Reconstruction  h=",signif(hakt,3)," min=",signif(min(tobj$theta),3)," max=",signif(max(tobj$theta),3)))
+image(tobj$bi,col=gray((0:255)/255),xaxt="n",yaxt="n")
+title(paste("Sum of weights: min=",signif(min(tobj$bi),3)," mean=",signif(mean(tobj$bi),3)," max=",signif(max(tobj$bi),3)))
+image(tobj$fix,col=gray((0:255)/255),xaxt="n",yaxt="n",zlim=c(0,1))
+title("Estimates fixed")
+}
+if(d==3){ 
+oldpar<-par(mfrow=c(2,2),mar=c(1,1,3,.25),mgp=c(2,1,0))
+image(y[,,n3%/%2+1],col=gray((0:255)/255),xaxt="n",yaxt="n")
+title(paste("Observed Image  min=",signif(min(y),3)," max=",signif(max(y),3)))
+image(tobj$theta[,,n3%/%2+1],col=gray((0:255)/255),xaxt="n",yaxt="n")
+title(paste("Reconstruction  h=",signif(hakt,3)," min=",signif(min(tobj$theta),3)," max=",signif(max(tobj$theta),3)))
+image(tobj$bi[,,n3%/%2+1],col=gray((0:255)/255),xaxt="n",yaxt="n")
+title(paste("Sum of weights: min=",signif(min(tobj$bi),3)," mean=",signif(mean(tobj$bi),3)," max=",signif(max(tobj$bi),3)))
+image(tobj$fix[,,n3%/%2+1],col=gray((0:255)/255),xaxt="n",yaxt="n",zlim=c(0,1))
+title("Estimates fixed")
+} 
+par(oldpar)
+}
+#
+#    Calculate MAE and MSE if true parameters are given in u 
+#    this is for demonstration and testing for propagation (parameter adjustments) 
+#    only.
+#
+if(!is.null(u)) {
+   cat("bandwidth: ",signif(hakt,3),"eta==1",sum(tobj$eta==1),"   MSE: ",
+                    signif(mean((tobj$theta-u)^2),3),"   MAE: ",
+		    signif(mean(abs(tobj$theta-u)),3)," mean(bi)=",
+		    signif(mean(tobj$bi),3),"mean hhom",signif(mean(hhom),3),"\n")
+   mae<-c(mae,signif(mean(abs(tobj$theta-u)),3))
+		    }
+if(demo) readline("Press return")
+#
+#   Prepare for next iteration
+#
+x<-1.25^k
+scorrfactor<-x/(3^d*prod(scorr)*prod(h0)+x)
+lambda0<-lambda*scorrfactor
+if (max(total) >0) {
+      cat(signif(total[k],2)*100,"% . ",sep="")
+     }
+k <- k+1
+gc()
+}
+cat("\n")
+###                                                                       
+###            end iterations now prepare results                                                  
+###                                 
+###   component var contains an estimate of Var(tobj$theta) if aggkern="Uniform", or if !memory 
+###   
+if( family=="Gaussian"&length(sigma2)==n){
+# heteroskedastic Gaussian case 
+vartheta <- tobj$bi2/tobj$bi^2
+#  pointwise variances are reflected in weights
+} else {
+vartheta <- switch(family,Gaussian=sigma2,
+                          Bernoulli=tobj$theta*(1-tobj$theta),
+			  Poisson=tobj$theta,
+			  Exponential=tobj$theta^2,
+			  Volatility=2*tobj$theta,
+			  Variance=2*tobj$theta,0)*tobj$bi2/tobj$bi^2
+vred<-tobj$bi2/tobj$bi^2
+}
+sigma2 <- switch(family,Gaussian=sigma2,
+                          Bernoulli=tobj$theta*(1-tobj$theta),
+			  Poisson=tobj$theta,
+			  Exponential=tobj$theta^2,
+			  Volatility=2*tobj$theta,
+			  Variance=2*tobj$theta,0)
+if( family=="Gaussian"){
+vartheta<-vartheta/Spatialvar.gauss(hakt/0.42445/4,h0+1e-5,d)*Spatialvar.gauss(hakt/0.42445/4,1e-5,d)
+}
+awsobj(y,tobj$theta,vartheta,hakt,sigma2,lkern,lambda,ladjust,aws,memory,
+              call,homogen,earlystop=FALSE,family=family,wghts=wghts,mae=mae)
+}
+#######################################################################################
+#
+#        Auxilary functions
+#
+#######################################################################################
+#
+#        Set default values
+#
+# default values for lambda and tau are chosen by propagation condition
+# (strong version) with alpha=0.05 (Gaussian) and alpha=0.01 (other family models)
+# see script aws_propagation.r
+#
+#######################################################################################
+setawsdefaults <- function(dy,meany,family,lkern,aggkern,aws,memory,ladjust,hmax,shape,wghts){
+lkern<-switch(lkern,Triangle=2,Quadratic=3,Cubic=4,Plateau=1,Gaussian=5,2)
+#
+#   univariate case
+#
+if(is.null(dy)){
+      d<-1
+} else {
+      d <- length(dy)
+}
+if(is.null(hmax)) hmax <- switch(d,250,12,5)
+if(aws) lambda <- ladjust*switch(family,
+                  Gaussian=switch(d,11.3,6.1,6.2),# see inst/scripts/adjust.r for alpha values
+		  Bernoulli=switch(d,9.6,7.6,6.9),
+        	  Exponential=switch(d,14.2,6.8,6.1),
+	          Poisson=switch(d,9.6,7.6,6.9),
+                  Volatility=switch(d,10,6.1,6.1),
+                  Variance=switch(d,12.8,6.1,6.1),
+                  switch(d,11.3,6.1,.96)) else lambda <- 1e50
+#
+#    determine heta for memory step
+#
+heta <- switch(family,   Gaussian=1.25,
+			 Bernoulli=5/meany/(1-meany),
+			 Exponential=20,
+			 Poisson=max(1.25,20/meany),
+                         Volatility=20,
+			 Variance=20,
+			 1.25)^(1/d)
+ktau <- log(switch(d,100,15,5))
+#
+# stagewise aggregation 
+#
+if(!aws){
+#
+# force aggkern = "Triangle"  here
+#
+#  we need a tau for stagewise aggregation that fulfils the propagation condition
+#
+    aggkern <- "Triangle"
+    cat("Stagewise aggregation: Triangular aggregation kernel is used\n")
+#
+#   this is the first bandwidth to consider for stagewise aggregation
+#
+    if(!memory){
+        heta <- hmax
+        cat("Neither PS nor Stagewise Aggregation is specified, compute kernel estimate with bandwidth hmax\n") 
+    } else {
+    tau <- switch(family,
+                            Gaussian=switch(d,.28,.21,.21),
+			    Bernoulli=switch(d,.36,.36,.36),
+			    Exponential=switch(d,1.3,1.3,1.3),
+			    Poisson=switch(d,.36,.21,.21),
+                            Volatility=switch(d,1.3,1.3,1.3),
+			    Variance=switch(d,1.3,1.3,1.3),
+			    switch(d,.28,.21,.21))
+}
+} else {
+#
+#   set appropriate value for tau (works for all families)
+#
+if(memory) {
+tau <- 8 
+} else {
+tau <- 1e10
+heta <- 1e10
+}
+}
+if(memory) tau1<-ladjust*tau else tau1 <- 1e10
+#
+#    adjust for different aggregation kernels
+#
+if(aggkern=="Triangle") tau1<-2.5*tau1
+tau2<-tau1/2
+#
+#   set maximal bandwidth
+#
+# uses a maximum of about 500, 450 and 520  points, respectively.
+mcode <- switch(family,
+                Gaussian=1,
+		Bernoulli=2,
+		Poisson=3,
+		Exponential=4,
+		Volatility=4,
+		Variance=5,
+		-1)
+if(mcode < 0) stop(paste("specified family ",family," not yet implemented"))
+   lambda<-lambda*1.8
+if(is.null(shape)) shape<-1
+maxvol <- getvofh(hmax,lkern,wghts)
+kstar <- as.integer(log(maxvol)/log(1.25))
+if(aws||memory) k <- switch(d,1,3,6) else k <- kstar
+if(aws) cat("Running PS with lambda=",signif(lambda,3)," hmax=",hmax,"number of iterations:",kstar-k+1," memory step",if(memory) "ON" else "OFF","\n")
+else cat("Stagewise aggregation \n")
+list(heta=heta,tau1=tau1,tau2=tau2,lambda=lambda,hmax=hmax,d=d,mcode=mcode,shape=shape,aggkern=aggkern,ktau=ktau,kstar=kstar,maxvol=maxvol,k=k,lkern=lkern,wghts=wghts)
+}
+#######################################################################################
+#
+#    IQRdiff (for robust variance estimates
+#
+#######################################################################################
+IQRdiff <- function(y) IQR(diff(y))/1.908
+#######################################################################################
+#
+#    Kullback-Leibler distances
+#
+#######################################################################################
+KLdist <- function(mcode,th1,th2,bi0){
+   th12<-(1-0.5/bi0)*th2+0.5/bi0*th1
+   z<-switch(mcode,(th1-th2)^2,
+                th1*log(th1/th12)+(1.-th1)*log((1.-th1)/(1.-th12)),
+		th1*log(th1/th12)-th1+th12,
+		th1/th2-1.-log(th1/th2),
+		th1/th2-1.-log(th1/th2))
+   z[is.na(z)]<-0
+   z
+		}
+####################################################################################
+#
+#    Memory step for local constant aws
+#
+####################################################################################
+updtheta<-function(zobj,tobj,cpar){
+heta<-cpar$heta
+hakt<-zobj$hakt
+bi<-zobj$bi
+bi2<-zobj$bi2
+thetanew<-zobj$ai/bi
+if(hakt>heta) {
+#
+#   memory step
+#
+mcode<-cpar$mcode
+aggkern <- cpar$aggkern
+tau1<-cpar$tau1
+tau2<-cpar$tau2
+kstar<-cpar$ktau
+tau<-2*(tau1+tau2*max(kstar-log(hakt),0))
+theta<-tobj$theta
+thetanew[tobj$fix]<-theta[tobj$fix]
+eta<-switch(aggkern,"Uniform"=as.numeric(zobj$bi0/tau*
+                     KLdist(mcode,thetanew,theta,max(zobj$bi0))>1),
+                    "Triangle"=pmin(1,zobj$bi0/tau*
+		     KLdist(mcode,thetanew,theta,max(zobj$bi0))),
+		    as.numeric(zobj$bi0/tau*
+		     KLdist(mcode,thetanew,theta,max(zobj$bi0))>1))
+eta[tobj$fix]<-1
+bi <- (1-eta)*bi + eta * tobj$bi
+bi2 <- (1-eta)*bi2 + eta * tobj$bi2
+thetanew <- (1-eta)*thetanew + eta * theta
+} else {
+#
+#  no memory step
+#
+eta <- rep(0,length(thetanew))
+}
+list(theta=thetanew,bi=bi,bi2=bi2,eta=eta,fix=(tobj$fix|eta==1))
+}
+####################################################################################
+#
+#    Regularize for Bernoulli and Poisson models if parameter estimates are
+#    at the border of their domain
+#
+####################################################################################
+regularize <- function(zobj,family){
+if(family%in%c("Bernoulli","Poisson")){
+zobj$ai <- 1/zobj$bi+zobj$ai
+zobj$bi <- 2/zobj$bi+zobj$bi
+}
+zobj
+} 
+############################################################################
+#
+#   transformations that depend on the specified family
+#
+############################################################################
+awsfamily <- function(family,y,sigma2,shape,scorr,lambda,cpar){
+h0 <- 0
+if(family=="Gaussian") {
+  d <- cpar$d
+  if(any(scorr>0)) {
+         h0<-numeric(length(scorr))
+         for(i in 1:length(h0))
+         h0[i]<-geth.gauss(scorr[i])
+         if(length(h0)<d) h0<-rep(h0[1],d)
+         cat("Corresponding bandwiths for specified correlation:",h0,"\n")
+}
+    if(is.null(sigma2)) {
+        sigma2 <- IQRdiff(as.vector(y))^2
+        if(scorr[1]>0) sigma2<-sigma2*Varcor.gauss(h0)
+	cat("Estimated variance: ", signif(sigma2,4),"\n")
+	}
+    if(length(sigma2)==1){
+#   homoskedastic Gaussian case
+    lambda <- lambda*sigma2*2 
+    cpar$tau1 <- cpar$tau1*sigma2*2 
+    cpar$tau2 <- cpar$tau2*sigma2*2 
+    } else {
+#   heteroskedastic Gaussian case
+    if(length(sigma2)!=length(y)) 
+	stop("sigma2 does not have length 1 or same length as y")
+    lambda <- lambda*2 
+    cpar$tau1 <- cpar$tau1*2 
+    cpar$tau2 <- cpar$tau2*2 
+    sigma2 <- 1/sigma2 #  taking the invers yields simpler formulaes 
+    }
+}
+#
+#   specify which statistics are needed and transform data if necessary
+#
+if(family=="Volatility"){
+   family <- "Exponential"
+   y <- y^2
+   lambda <- 2*lambda 
+# this accounts for the additional 1/2 in Q(\hat{theta},theta)
+}
+if(family=="Variance"){
+   lambda <- 2*lambda/shape 
+# this accounts for the additional 1/2 in Q(\hat{theta},theta) and the degrees of freedom in chisq
+   cpar$tau1 <- cpar$tau1/shape
+   cpar$tau2 <- cpar$tau2/shape 
+}
+list(cpar=cpar,lambda=lambda,y=y,sigma2=sigma2,h0=h0)
+}
+##################################################################################
+#
+#   AWS local constant Test for propagation condition 
+#
+##################################################################################
+awstestprop <- function(y,family,tobj,zobj,sigma2,hakt,cpar,u,propagation){
+dlw<-(2*trunc(hakt/c(1,cpar$wghts))+1)[1:cpar$d]
+if(family=="Gaussian"&length(sigma2)==cpar$n){
+# heteroskedastic Gaussian case
+pobj <- .Fortran("chaws",as.double(y),
+                       as.logical(tobj$fix),
+                       as.double(sigma2),
+                       as.integer(cpar$n1),
+                       as.integer(cpar$n2),
+                       as.integer(cpar$n3),
+                       hakt=as.double(hakt),
+                       as.double(1e40),
+                       as.double(tobj$theta),
+                       bi=as.double(tobj$bi),
+		       bi2=double(cpar$n),
+                       bi0=as.double(zobj$bi0),
+		       vred=double(cpar$n),
+                       ai=as.double(zobj$ai),
+                       as.integer(cpar$mcode),
+                       as.integer(cpar$lkern),
+	               as.double(0.25),
+		       double(prod(dlw)),
+		       as.double(cpar$wghts),
+		       PACKAGE="aws",DUP=FALSE)[c("bi","ai","hakt")]
+} else {
+# all other cases
+pobj <- .Fortran("caws",as.double(y),
+                       as.logical(tobj$fix),
+                       as.integer(cpar$n1),
+                       as.integer(cpar$n2),
+                       as.integer(cpar$n3),
+                       hakt=as.double(hakt),
+                       hhom=as.double(rep(1,cpar$n)),
+                       as.double(1e40),
+                       as.double(tobj$theta),
+                       bi=as.double(tobj$bi),
+		       bi2=double(cpar$n),
+                       bi0=as.double(zobj$bi0),
+                       ai=as.double(zobj$ai),
+                       as.integer(cpar$mcode),
+                       as.integer(cpar$lkern),
+                       as.double(0.25),
+		       double(prod(dlw)),
+		       as.double(cpar$wghts),
+		       PACKAGE="aws",DUP=FALSE)[c("bi","ai","hakt")]
+}
+if(family%in%c("Bernoulli","Poisson")) pobj<-regularize(pobj,family)
+ptheta <- pobj$ai/pobj$bi
+dim(ptheta) <- dim(y) 
+narisk <- sum(abs(ptheta-u))
+if(narisk==0) narisk<-1e10
+propagation <- c(propagation,sum(abs(tobj$theta-ptheta))/narisk)
+cat("Propagation with alpha=",max(propagation),"narisk",narisk,"awsrisk",sum(abs(tobj$theta-u)),"compare",sum(abs(tobj$theta-ptheta)),"\n")
+cat("alpha values:","\n")
+print(signif(propagation[-1],3))
+propagation
 }
 
-############################################################################
-#
-# bivariate local constant smoothing
-#
-# Copyright Weierstrass Instiute for Applied Analysis and Stochastics
-#           J. Polzehl 2000
-############################################################################
-
-awsbi <- function(y, lambda=3, gamma=1.3, eta = 4, 
-     s2hat = NULL, kstar = length(radii), rmax=max(radii),
-     radii=c((1:8)/2,4.4,5.,(6:10),(6:10)*2), graph = FALSE, 
-     u0 = NULL,control="dyadic",demomode=FALSE, colors=gray((0:255)/255))
-{
-# requires  dyn.load("aws.so") 
-#
-#   y - observed values 
-#   lambda - main smoothing parameter (should be approximately 3)
-#   gamma  - allow for increase of variances (over minsk) by factor gamma
-#   eta   - main control parameter (should be approximately 4)   
-#   s2hat - initial variance estimate (if available,
-#           can be either a number (homogeneous case), a matrix of same dimension  
-#           as y (inhomogeneous variance) or NULL (a homogeneous variance estimate
-#           will be generated in this case)
-#   kstar - number of iterations to perform (set to min(kstar, length(radii)))
-#   radii - radii of neighbourhoods used
-#   graph - logical, if TRUE progress (for each iteration) is illustrated grahically,
-#           if FALSE the program runs until the final estimate is obtained 
-#           (much faster !!!)
-#   colors - color sceme to be used for images
-#   u0    - allows for submission of "true" values for illustration puposes only
-#           if graph=TRUE  MSE and MAE are reported for each iteration step
-#   control - the control step is performed in either a dyadic sceme
-#           ("dyadic") or using all previous estimates (otherwise)
-#   demomode - only active if graph=TRUE, causes the program to wait after displaying the 
-#           results of an iteration step
-#
-        radii <- radii[radii<=rmax]
-        kstar <- min(kstar,length(radii))
-        args <- list(lambda=lambda,gamma=gamma,eta=eta,s2hat = s2hat, 
-                     kstar = kstar, radii=radii)
-        l2 <- r2 <- single(kstar)
-        newcontr <- numeric(kstar)
-        if(control=="dyadic") newcontr[2^(0:(log(kstar)/log(2)))] <- 1
-        else newcontr[1:kstar] <- 1
-        cat("Control sceme: ",newcontr,"\n")
-        dy <- dim(y)
-        if(is.null(dy)||length(dy)>2) stop("y should have dimension 2")
-        nx <- dy[1]
-        ny <- dy[2]
-        n <- nx * ny
-        if(graph) oldpar <- par(mfrow = c(1, 3))
-        kiii <- radii^2
-# get number of points in neighbourhoods
-        iii <- getnubi(radii^2, c(1, 1))
-        lambda <- lambda^2
-        gamma <- gamma^2
-        kern <- exp( - seq(0, 6, 0.3))
-        lambda <- lambda * 0.3
-# generate a variance estimate if needed
-        if(length(s2hat) == 0) {
-           s2hat <- (IQR(diff(y))/1.908)^2
-           cat("Estimated variance:",s2hat,"\n")
-           }
-# expand s2hat in case of homogeneous variance
-        if(length(as.vector(s2hat)) == 1) s2hat <- matrix(rep(s2hat, 
-                        n), ncol = ny) 
-        controls <- numeric(2*n)
-        dim(controls) <- c(2,nx,ny)
-        controls[1,,] <- y-eta*sqrt(s2hat)
-        controls[2,,] <- y+eta*sqrt(s2hat)
-        yhat <- y
-        minsk <- sk <- s2hat
-        if(!is.null(u0)) {
-                l2[1] <- mean((yhat - u0)^2)
-                r2[1] <- mean(abs(yhat - u0))
-                cat("Iteration", 0, "nu=", iii[1], "MSE", l2[1], 
-                                "MAE", r2[1], "\n")
-        }
-        kiiinit <- kiii[1]
-        if(kiiinit > 5) kiiinit <- 5
-# nontrivial first neighbourhood (should only be used for small signal/noise)
-        z <- .Fortran("locbinis",
-                as.integer(nx),
-                as.integer(ny),
-                as.single(y),
-                yhat = as.single(yhat),
-                as.single(s2hat),
-                sk = as.single(sk),
-                as.single(kiiinit + 0.001),PACKAGE="aws")
-        yhat <- z$yhat
-        sk <- z$sk
-        if(graph) {
-        for(k in 2:kstar) {
-                z <- .Fortran("locbiw",
-                        as.integer(nx),
-                        as.integer(ny),
-                        as.single(y),
-                        as.single(yhat),
-                        yhat = as.single(yhat),
-                        as.single(sk),
-                        sk = as.single(sk),
-                        controls=as.single(controls),
-                        as.integer(newcontr[k]),
-                        as.single(minsk),
-                        as.single(kiii[k] + 0.0001),
-                        as.single(s2hat),
-                        as.single(lambda),
-                        as.single(eta),
-                        as.single(gamma),
-                        as.single(kern),PACKAGE="aws")[c("yhat","sk","controls")]
-                yhat <- z$yhat
-                sk <- z$sk
-                controls <- z$controls
-                minsk <- pmin(sk, minsk)
-                if(!is.null(u0)) {
-                        l2[k] <- mean((yhat - u0)^2)
-                        r2[k] <- mean(abs(yhat - u0))
-                }
-                        image(matrix(y, ncol = ny),col=colors)
-                        title("original image")
-                        image(matrix(yhat, ncol = ny),zlim=range(y),col=colors)
-                        title(paste("Estimate  Iteration ", k-1, "  N(U) = ", iii[k]))
-                        image(matrix(log(sk), ncol = ny),col=colors)
-                        title(paste("log(var(yhat))"," Mean Var:",signif(mean(sk),3)))
-                if(!is.null(u0))
-                        cat("Iteration", k-1, "nu=", iii[k], "MSE", l2[k],
-                                "MAE", r2[k], "\n")
-            if(demomode) {
-            cat("press ENTER to continue")
-            readline()
-            }
-                gc()
-                }
-                par(oldpar)
-        list(yhat = matrix(yhat, ncol = ny), shat = matrix(sk, ncol = ny), 
-             nu = iii, l2 = l2, r2 = r2, args=args)
-        }
-        else {
-           z <- .Fortran("locbiall",
-                        as.integer(kstar),
-                        as.integer(nx),
-                        as.integer(ny),
-                        as.single(y),
-                        as.single(yhat),
-                        yhat = as.single(yhat),
-                        as.single(sk),
-                        sk = as.single(sk),
-                        as.single(controls),
-                        as.integer(newcontr),
-                        as.single(minsk),
-                        as.single(kiii),
-                        as.single(s2hat),
-                        as.single(lambda),
-                        as.single(eta),
-                        as.single(gamma),
-                        as.single(kern),PACKAGE="aws")[c("yhat","sk")]
-                if(!is.null(u0)){
-                        l2[kstar] <- mean((z$yhat - u0)^2)
-                        r2[kstar] <- mean(abs(z$yhat - u0))
-                        cat("Iteration ", kstar-1, "nu=", iii[kstar], "MSE", l2[kstar],
-                                "MAE", r2[kstar], "\n")
-                        }
-        list(yhat = matrix(z$yhat, ncol = ny),
-             shat = matrix(z$sk, ncol = ny),
-             nu = iii,  args=args)
-        }
+getvofh <- function(bw,lkern,wght){
+.Fortran("getvofh",
+         as.double(bw),
+         as.integer(lkern),
+         as.double(wght),
+         vol=double(1),
+         PACKAGE="aws")$vol
 }
-
-############################################################################
-#
-# trivariate local constant smoothing
-#
-# Copyright Weierstrass Instiute for Applied Analysis and Stochastics
-#           J. Polzehl 2000
-############################################################################
-
-
-awstri <- function(y, lambda = 3, gamma = 1.3 , eta = 4, s2hat = NULL, 
-    kstar = length(radii), rmax=max(radii), weight = c(1,1,1), 
-    radii = c((1:4)/2,2.3,(5:12)/2,7:9,10.5,12,13.5),control="dyadic")
-{
-# requires  dyn.load("aws.so") 
-#
-#   y - observed values (ordered by value of independent variable)
-#   lambda - main smoothing parameter (should be approximately 3)
-#   gamma  - allow for increase of variances (over minsk) by factor gamma
-#   eta   - main control parameter (should be approximately 4)   
-#   s2hat - initial variance estimate (if available,
-#           can be either a number (homogeneous case), a vector of same length 
-#           as y (inhomogeneous variance) or NULL (a homogeneous variance estimate
-#           will be generated in this case)
-#   kstar - number of iterations to perform (set to min(kstar, length(radii)))
-#   weight - excentricities of ellipsoids used as neighbourhoods 
-#            used to weight distances in coordinate directions
-#   radii - radii of neighbourhoods used
-#   control - the control step is performed in either a dyadic sceme
-#           ("dyadic") or using all previous estimates (otherwise)
-#
-# Speicherschonende Variante
-# mit Fortran requires  dyn.load.shared("./image3.so")
-        radii <- radii[radii<=rmax]
-        kstar <- min(kstar,length(radii))
-        args <- list(lambda=lambda,gamma=gamma,eta=eta,s2hat = s2hat, 
-                     kstar = kstar, radii=radii)
-        dy <- dim(y)
-        if(length(dy) != 3) stop("y is not a 3-dimensional array")
-        if(is.null(weight)) weight <- rep(1, 3)
-        if(is.null(radii)) stop("No neigborhood defined")
-        radii2 <- radii^2
-        nx <- dy[1]
-        ny <- dy[2]
-        nz <- dy[3]
-        newcontr <- numeric(kstar)
-        if(control=="dyadic") newcontr[2^(0:(log(kstar)/log(2)))] <- 1
-        else newcontr[1:kstar] <- 1
-    cat("Control sceme: ", newcontr,"\n")
-        lambda <- lambda^2
-        gamma <- gamma^2
-#         kern <- exp( - seq(0, 6, 0.3)/1.44)
-        kern <- exp( - seq(0, 6, 0.3))
-        lambda <- lambda*.3
-        n <- nx * ny * nz
-        if(length(s2hat) == 0) s2hat <- (IQR(diff(y))/1.908)^2
-        if(length(as.vector(s2hat)) == 1) homogeneous <- TRUE
-        #now precompute neighbourhoods
-        yhat <- y
-        if(homogeneous) minsk <- sk <- array(s2hat,dim(y))
-    else minsk <- sk <- s2hat
-        controls <- numeric(2*n)
-        dim(controls) <- c(2,nx,ny,nz)
-        controls[1,,,] <- y-eta*sqrt(s2hat)
-        controls[2,,,] <- y+eta*sqrt(s2hat)
-        if(homogeneous){
-        z <- .Fortran("loctria0",
-                as.integer(kstar),
-                as.integer(nx),
-                as.integer(ny),
-                as.integer(nz),
-                as.single(y),
-                as.single(yhat),
-                yhat = as.single(yhat),
-                as.single(sk),
-                sk = as.single(sk),
-                as.single(controls),
-                as.integer(newcontr),
-                as.single(radii2),
-                as.single(s2hat),
-                as.single(lambda),
-                as.single(eta),
-                as.single(weight),
-                as.single(kern),PACKAGE="aws")[c("yhat","sk")]
-                }
-        else{
-        z <- .Fortran("loctrial",
-                      as.integer(kstar),
-                      as.integer(nx),
-                      as.integer(ny),
-                      as.integer(nz),
-                      as.single(y),
-                      as.single(yhat),
-                      yhat = as.single(yhat),
-                      as.single(sk),
-                      sk = as.single(sk),
-                      as.single(controls),
-                      as.integer(newcontr),
-                      as.single(minsk),
-                      as.single(radii2),
-                      as.single(s2hat),
-                      as.single(lambda),
-                      as.single(eta),
-                      as.single(gamma),
-                      as.single(weight),
-                      as.single(kern),PACKAGE="aws")[c("yhat","sk")]
-                      }
-    list(yhat = array(z$yhat, dim = dy), shat = array(z$sk,
-         dim = dy), args = args)
-}
-
-
-############################################################################
-#
-# get number of pixels in bivariate neighbourhoods
-#
-############################################################################
-
-getnubi <- function(radiusq, weights)
-{
-        nu <- numeric(length(radiusq))
-        nu <- .Fortran("getnubi",
-                as.single(radiusq),
-                as.single(weights),
-                nu = as.integer(nu),
-                as.integer(length(radiusq)),PACKAGE="aws")$nu
-        nu
-}
-
-############################################################################
-#
-# get number of pixels in trivariate neighbourhoods
-#
-############################################################################
-
-getnutri <- function(radiusq, weights)
-{
-        nu <- nu3 <- numeric(length(radiusq))
-        nu3 <- .Fortran("getnubi",
-                as.single(radiusq),
-                as.single(weights[1:2]),
-                nu = as.integer(nu3),
-                as.integer(length(radiusq)),PACKAGE="aws")$nu
-        for( i in 1:trunc(max(sqrt(radiusq))/weights[3])) {
-           radius2 <- radiusq-i^2*weights[3]
-           ind <- (1:length(radiusq))[radius2>=0]
-           if(length(ind)<1) break
-           nu3[ind] <- nu3[ind] + 2*.Fortran("getnubi",
-                         as.single(radius2[ind]),
-                         as.single(weights[1:2]),
-                         nu = as.integer(nu[ind]),
-                         as.integer(length(ind)),PACKAGE="aws")$nu
-        }
-        nu3
-}
-
-
-.First.lib <- function(lib, pkg) {
-  if(version$major==0)
-    stop("This version for R 1.00 or later")
-  library.dynam("aws", pkg, lib)
+gethani <- function(x,y,lkern,value,wght,eps=1e-2){
+.Fortran("gethani",
+         as.double(x),
+         as.double(y),
+         as.integer(lkern),
+         as.double(value),
+         as.double(wght),
+         as.double(eps),
+         bw=double(1),
+         PACKAGE="aws")$bw
 }
