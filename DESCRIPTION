@@ -1,6 +1,6 @@
 Package: aws
-Version: 1.6
-Date: 2009-04-15
+Version: 1.6-1
+Date: 2009-10-12
 Title: Adaptive Weights Smoothing
 Author: Joerg Polzehl <polzehl@wias-berlin.de>
 Maintainer: Joerg Polzehl <polzehl@wias-berlin.de>
@@ -16,6 +16,6 @@ License: GPL (>= 2)
 Copyright: This package is Copyright (C) 2005-2009 Weierstrass
         Institute for Applied Analysis and Stochastics.
 URL: http://www.wias-berlin.de/project-areas/stat/
-Packaged: Wed Apr 15 15:53:34 2009; polzehl
+Packaged: 2009-10-12 16:27:29 UTC; polzehl
 Repository: CRAN
-Date/Publication: 2009-04-15 13:50:00
+Date/Publication: 2009-10-12 17:17:13

@@ -1,6 +1,0 @@
-aws                     AWS for local constant models on a grid
-lpaws                   Local polynomial smoothing by AWS
-aws.irreg               local constant AWS for irregular (1D/2D) design
-aws.gaussian            Adaptive weights smoothing for heteroscedastic Gaussian data (variance depending on the mean).
-awsdata                 Extract information from an object of class aws
-binning                 Binning in 1D, 2D or 3D
