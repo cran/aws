@@ -180,6 +180,7 @@ C   kern     specifies the location kernel
 C   wght     scaling factor for second and third dimension (larger values shrink)
 C
       implicit logical (a-z)
+
       external kldist,lkern
       real*8 kldist,lkern
       integer n1,n2,n3,model,kern
@@ -241,6 +242,17 @@ C  first stochastic term
       call rchkusr()
       DO i3=1,n3
          DO i2=1,n2
+C$OMP PARALLEL DEFAULT(NONE)
+C$OMP& SHARED(ai,bi,bi0,bi2,hhom,n1,n2,n3,hakt2,hmax2,theta
+C$OMP& ,lwght,wght,y,fix)
+C$OMP& FIRSTPRIVATE(ih1,i2,ih2,i3,lambda,aws
+C$OMP& ,model,spmin,spf,dlw1,clw1,dlw2,clw2,dlw3,clw3)
+C$OMP& PRIVATE(iind,hhomi,hhommax,thetai,bii,bii0,swj
+C$OMP& ,swj2,swj0,swjy,sij,i1,wj
+C$OMP& ,j3,jw3,jind3,z3,jwind3
+C$OMP& ,j2,jw2,jind2,z2,jwind2
+C$OMP& ,j1,jw1,jind,z1)
+C$OMP DO SCHEDULE(DYNAMIC,1)
              DO i1=1,n1
                iind=i1+(i2-1)*n1+(i3-1)*n1*n2
                hhomi=hhom(iind)
@@ -303,10 +315,13 @@ C  first stochastic term
                bi2(iind)=swj2
                bi0(iind)=swj0
                hhom(iind)=sqrt(hhommax)
-               call rchkusr()
             END DO
+C$OMP END DO NOWAIT
+C$OMP END PARALLEL
+         call rchkusr()
          END DO
       END DO
+C$OMP FLUSH(ai,bi,bi0,bi2,hhom)
       RETURN
       END
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
@@ -388,6 +403,17 @@ C  first stochastic term
       call rchkusr()
       DO i3=1,n3
          DO i2=1,n2
+C$OMP PARALLEL DEFAULT(NONE)
+C$OMP& SHARED(ai,bi,bi0,bi2,si2,vred,n1,n2,n3,hakt2,hakt,hmax2,theta
+C$OMP& ,lwght,wght,y,fix)
+C$OMP& FIRSTPRIVATE(ih1,i2,ih2,i3,lambda,aws
+C$OMP& ,model,spmin,spf,dlw1,clw1,dlw2,clw2,dlw3,clw3)
+C$OMP& PRIVATE(iind,thetai,bii,bii0,swj
+C$OMP& ,swj2,swj0,swjy,sij,sv1,sv2,i1,wj
+C$OMP& ,j3,jw3,jind3,z3,jwind3
+C$OMP& ,j2,jw2,jind2,z2,jwind2
+C$OMP& ,j1,jw1,jind,z1)
+C$OMP DO SCHEDULE(DYNAMIC,1)
              DO i1=1,n1
                iind=i1+(i2-1)*n1+(i3-1)*n1*n2
                IF (fix(iind)) CYCLE
@@ -396,7 +422,6 @@ C    nothing to do, final estimate is already fixed by control
                bii=bi(iind)/lambda
 C   scaling of sij outside the loop
                bii0=bi0(iind)
-               ih3=hakt/wght(2)
                swj=0.d0
                swj2=0.d0
                swj0=0.d0
@@ -446,10 +471,13 @@ C  first stochastic term
                bi2(iind)=swj2
                bi0(iind)=swj0
                vred(iind)=sv2/sv1/sv1
-               call rchkusr()
             END DO
+C$OMP END DO NOWAIT
+C$OMP END PARALLEL
+         call rchkusr()
          END DO
       END DO
+C$OMP FLUSH(ai,bi,bi0,bi2,vred)
       RETURN
       END
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
@@ -532,6 +560,17 @@ C  first stochastic term
       call rchkusr()
       DO i3=1,n3
          DO i2=1,n2
+C$OMP PARALLEL DEFAULT(NONE)
+C$OMP& SHARED(ai,bi,bi0,bi2,si2,hhom,n1,n2,n3,hakt2,hmax2,theta
+C$OMP& ,lwght,wght,y,fix,mask,vred,gi)
+C$OMP& FIRSTPRIVATE(ih1,i2,ih2,i3,lambda,aws
+C$OMP& ,model,spmin,spf,dlw1,clw1,dlw2,clw2,dlw3,clw3)
+C$OMP& PRIVATE(iind,hhomi,hhommax,thetai,bii,bii0,swj
+C$OMP& ,swj2,swj0,swjy,sij,sv1,sv2,i1,wj
+C$OMP& ,j3,jw3,jind3,z3,jwind3
+C$OMP& ,j2,jw2,jind2,z2,jwind2
+C$OMP& ,j1,jw1,jind,z1,z)
+C$OMP DO SCHEDULE(DYNAMIC,1)
              DO i1=1,n1
                iind=i1+(i2-1)*n1+(i3-1)*n1*n2
                hhomi=hhom(iind)
@@ -543,7 +582,6 @@ C    nothing to do, final estimate is already fixed by control
                bii=bi(iind)/lambda
 C   scaling of sij outside the loop
                bii0=bi0(iind)
-               ih3=hakt/wght(2)
                swj=0.d0
                swj2=0.d0
                swj0=0.d0
@@ -606,9 +644,12 @@ C
                hhom(iind)=sqrt(hhommax)
                gi(iind)=sv1
                vred(iind)=sv2/sv1/sv1
-               call rchkusr()
             END DO
+C$OMP END DO NOWAIT
+C$OMP END PARALLEL
+         call rchkusr()
          END DO
       END DO
+C$OMP FLUSH(ai,bi,bi0,bi2,hhom,gi,vred)
       RETURN
       END

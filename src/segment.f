@@ -5,7 +5,7 @@ C
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
       subroutine segment(y,fix,level,delta,si2,n1,n2,n3,hakt,
      1        lambda,theta,bi,bi2,bi0,gi,vred,thetan,kern,spmin,lwght,
-     2        wght,pvalue,segm,beta,thresh,ext,fov,varest)
+     2        wght,pvalue,segm,segmn,beta,thresh,ext,fov,varest)
 C
 C   y        observed values of regression function
 C   n1,n2,n3    design dimensions
@@ -21,7 +21,7 @@ C
       implicit logical (a-z)
       external kldist,lkern,fpchisq
       real*8 kldist,lkern,fpchisq
-      integer n1,n2,n3,kern,segm(1)
+      integer n1,n2,n3,kern,segm(1),segmn(1)
       logical aws,fix(1)
       real*8 y(1),theta(1),bi(1),bi0(1),thetan(1),lambda,wght(2),
      1       bi2(1),hakt,lwght(1),si2(1),vred(1),spmin,gi(1),
@@ -95,7 +95,7 @@ C  first stochastic term
            if(max(a-thi,thi-b)/sqrt(varest(iind))-cofh.gt.extthr) THEN
                   fix(iind)=.TRUE.
                   if(segm(iind).eq.0) segm(iind)=sign(1.d0,thi-level)
-C wee need to assign a value to segment before we can fix the decision
+C we need to assign a value to segment before we can fix the decision
                ELSE
                   fix(iind)=.FALSE.
                   ti=max(0.d0,max(a-thi,thi-b))
@@ -106,6 +106,17 @@ C wee need to assign a value to segment before we can fix the decision
       END DO
       END IF
       DO i3=1,n3
+C$OMP PARALLEL DEFAULT(NONE)
+C$OMP& SHARED(thetan,bi,bi0,bi2,si2,n1,n2,n3,hakt2,theta
+C$OMP& ,lwght,wght,y,fix,vred,gi,segm,segmn,pvalue,varest)
+C$OMP& FIRSTPRIVATE(ih1,ih2,i3,lambda,aws,beta,fov,a,b
+C$OMP& ,spmin,spf,dlw1,clw1,dlw2,clw2,dlw3,clw3,thresh)
+C$OMP& PRIVATE(iind,bii,bii0,swj,thi,cofh
+C$OMP& ,swj2,swj0,swjy,si,sij,sv1,sv2,i1,i2,wj
+C$OMP& ,j3,jw3,jind3,z3,jwind3
+C$OMP& ,j2,jw2,jind2,z2,jwind2
+C$OMP& ,j1,jw1,jind,z1,z)
+C$OMP DO SCHEDULE(DYNAMIC,1)
          DO i2=1,n2
              DO i1=1,n1
                iind=i1+(i2-1)*n1+(i3-1)*n1*n2
@@ -115,7 +126,6 @@ C    nothing to do, final estimate is already fixed by control
                bii=bi(iind)/lambda
 C   scaling of sij outside the loop
                bii0=bi0(iind)
-               ih3=hakt/wght(2)
                swj=0.d0
                swj2=0.d0
                swj0=0.d0
@@ -178,17 +188,20 @@ C
 C    both are equivalent for  homogeneous si2
                si=sqrt(si)
                IF((thi-a)/si+cofh.lt.-thresh) THEN
-                  segm(iind)=-1
+                  segmn(iind)=-1
                ELSE IF ((thi-b)/si-cofh.gt.thresh) THEN
-                  segm(iind)=1
+                  segmn(iind)=1
                ELSE
-                  segm(iind)=0
+                  segmn(iind)=0
                END IF               
                gi(iind)=sv1
                vred(iind)=sv2/sv1/sv1
-               call rchkusr()
             END DO
          END DO
+C$OMP END DO NOWAIT
+C$OMP END PARALLEL
+         call rchkusr()
       END DO
+C$OMP FLUSH(thetan,bi,bi0,bi2,gi,vred,varest,segmn)
       RETURN
       END
