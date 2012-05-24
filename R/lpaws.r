@@ -448,7 +448,7 @@ cpar <- list(heta=heta,tau1=tau1,tau2=tau2,dy=dy,ktau=ktau)
     vartheta <- sigma2*vartheta
   }
 awsobj(y,theta,vartheta,hakt,sigma2,lkern,lambda,ladjust,aws,memory,
-              call,homogen,earlystop,degree=degree,wghts=wghts,mae=mae,data=list(bi=bi,bi2=bi2))
+              args,homogen,earlystop,degree=degree,wghts=wghts,mae=mae,data=list(bi=bi,bi2=bi2))
 }
 
 

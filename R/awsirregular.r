@@ -18,7 +18,7 @@ if(!(varmodel %in% c("Constant","Linear","Quadratic"))) stop("Model for variance
 #   binning for variance estimation
 #
 zbins<-binning(x,y,nbins=rep(n^(1/d)/2,d))
-given.var<-!is.null(sigma2)
+given.var <- !is.null(sigma2)
 if(!given.var) {
 sigma20 <- mean(zbins$devs[zbins$x.freq>1]/(zbins$x.freq[zbins$x.freq>1]-1))
 cat("Preliminary variance estimate:",sigma20,"\n")
@@ -224,7 +224,7 @@ vartheta <- sigma2*tobj$bi2/tobj$bi^2
 vred<-tobj$bi2/tobj$bi^2
 }
 awsobj(yy,tobj$theta,vartheta,hakt,1/sigma2,lkern,lambda,ladjust,aws,memory,
-              call,ni=ni,homogen=FALSE,earlystop=FALSE,family="Gaussian",wghts=wghts,
+              args,ni=ni,homogen=FALSE,earlystop=FALSE,family="Gaussian",wghts=wghts,
               varmodel = varmodel,vcoef = vcoef,x=x,xmin=xmin,xmax=xmax)
 
 }
