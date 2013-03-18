@@ -1,17 +1,66 @@
 awstestprop <- function(dy,hmax,theta=1,family="Gaussian",
-                 lkern="Triangle",aws=TRUE,memory=FALSE,shape=2,ladjust=1,seed=1){
+                 lkern="Triangle",aws=TRUE,memory=FALSE,shape=2,
+                 homogeneous=TRUE,varadapt=FALSE,ladjust=1,spmin=0.25,seed=1,
+                 minlevel=1e-6,maxz=25,diffz=.5,maxni=FALSE,verbose=FALSE){
 if(length(dy)>3) return("maximum array dimension is 3")
 nnn <- prod(dy)
+if(minlevel < 5/nnn) {
+minlevel <- 5/nnn
+cat("minlevel reset to",minlevel,"due to insufficient size of test sample\n")
+}
 set.seed(seed)
-par(mfrow=c(1,2),mar=c(3,3,3,1),mgp=c(2,1,0))
+par(mfrow=c(1,1),mar=c(3,3,3,3),mgp=c(2,1,0))
 y <- array(switch(family,"Gaussian"=rnorm(nnn),
                          "Poisson"=rpois(nnn,theta),
                          "Exponential"=rexp(nnn,1),
                          "Bernoulli"=rbinom(nnn,1,theta),
                          "Volatility"=rnorm(nnn),
-                         "Variance"=rchisq(nnn,shape)/shape),dy)
-z <- seq(0,30,.5)
-alpha <- exp(seq(-10,3.5,.25))
+                         "Variance"=rchisq(nnn,shape)/shape,
+                         "NCchi"=sqrt(rchisq(nnn,shape,theta^2))),dy)
+if(family=="NCchi"){
+require(gsl)
+##
+##  define functions to access sd and var of noncentral chi 
+##  as functions of the noncenttrality parameter or expectation 
+##
+sofmchi <- function(L){
+minlev <- sqrt(2)*gamma(L+.5)/gamma(L)
+x <- seq(0,50,.01)
+mu <- sqrt(pi/2)*gamma(L+1/2)/gamma(1.5)/gamma(L)*hyperg_1F1(-0.5,L, -x^2/2, give=FALSE, strict=TRUE)
+s2 <- 2*L+x^2-mu^2
+s <- sqrt(s2)
+## return list containing values of noncentrality parameter (ncp),
+## mean (mu), standard deviation (sd) and variance (s2) to be used
+## in variance modeling
+list(ncp=x,mu=mu,s=s,s2=s2,minlev=minlev,L=L)
+}
+
+fncchis <- function(mu,varstats){
+mu <- pmax(varstats$minlev,mu)
+ind <- 
+findInterval(mu, varstats$mu, rightmost.closed = FALSE, all.inside = FALSE)
+varstats$s[ind]
+}
+
+fncchiv <- function(mu,varstats){
+mu <- pmax(varstats$minlev,mu)
+ind <- 
+findInterval(mu, varstats$mu, rightmost.closed = FALSE, all.inside = FALSE)
+varstats$s2[ind]
+}
+#
+#  
+#
+varstats <- sofmchi(shape/2) # precompute table of mean, sd and var for 
+}
+#
+#   NCchi for noncentral chi with shape=degrees of freedom and theta =NCP
+#
+z <- seq(0,maxz,diffz)
+nz <- length(z)
+elevel <- trunc(log(1e-6,10))
+levels <- as.vector(outer(c(.5,.2,.1),10^(-0:elevel)))
+levels <- levels[levels>=minlevel]
 wghts <- switch(length(dy),c(0,0),c(1,0),c(1,1))
 cpar<-setawsdefaults(dy,mean(y),family,lkern,"Uniform",aws,memory,ladjust,hmax,shape,wghts)
 lambda <- cpar$lambda
@@ -19,7 +68,9 @@ hmax <- cpar$hmax
 shape <- cpar$shape
 d <- cpar$d
 n<-length(y)
-sigma2 <- 1
+if(!homogeneous&family=="Gaussian"){
+sigma2 <- array(rchisq(prod(dy),shape)/shape,dy)
+} else sigma2 <- 1
 zfamily <- awsfamily(family,y,sigma2,shape,0,lambda,cpar)
 cpar <- zfamily$cpar
 lambda <- zfamily$lambda
@@ -32,21 +83,55 @@ n1 <- switch(d,n,dy[1],dy[1])
 n2 <- switch(d,1,dy[2],dy[2])
 n3 <- switch(d,1,1,dy[3])
 maxvol <- cpar$maxvol
-k <- cpar$k
+# k <- cpar$k
+k <- 1  
 kstar <- cpar$kstar
 h <- numeric(kstar)
 if(k>1) h[1:(k-1)] <- 1+(0:(k-2))*.001
-fix <- rep(FALSE,n)
-exceedence  <- exceedencena  <- matrix(0,61,kstar) # this is used to store exceedence probabilities for adaptive and nonadaptive estimates
-pofalpha <- matrix(0,55,kstar) # this is used to store exceedence probabilities 
-tobj<-list(bi= rep(1,n), bi2= rep(1,n), theta= y/shape, fix=fix)
-zobj<-zobj0<-list(ai=y, bi0= rep(1,n), bi=rep(1,n))
+exceedence  <- exceedencena  <- matrix(0,nz,kstar) # this is used to store exceedence probabilities for adaptive and nonadaptive estimates
+zobj<-zobj0<-list(ai=y, bi=rep(1,n))
+bi <- rep(1,n)
+yhat <- y/shape
 hhom <- rep(1,n)
-biold<-rep(1,n)
 lambda0<-1e50
-cat("Progress:")
 total <- cumsum(1.25^(1:kstar))/sum(1.25^(1:kstar))
-while (k<=kstar) {
+#
+#  get initial conditions for a comparison
+#
+if(family=="Bernoulli") y0 <- (10*y+1)/12
+if(family=="Poisson") y0 <- y+.1
+#
+#  this corresponds to the regularization used to avoid Inf distances
+#
+kldistnorm1 <- function(th1,y,df){
+require(gsl)
+L <- df/2
+m1 <- sqrt(pi/2)*gamma(L+1/2)/gamma(1.5)/gamma(L)*hyperg_1F1(-0.5,L, -th1^2/2, give=FALSE, strict=TRUE)
+(m1-y)^2/2/(2*L+th1^2-m1^2)
+}
+KLdist0 <- switch(family,"Gaussian"=y^2/2,
+                         "Poisson"=(theta-y0+y0*(log(y0)-log(theta))),
+                         "Exponential"=(log(y)-1+1/y),
+                         "Bernoulli"=(y0*log(y0/theta)+
+                                     (1-y0)*log((1-y0)/(1-theta))),
+                         "Volatility"=(log(y)-1+1/y)/2,
+                         "Variance"=shape/2*(log(y)-1+1/y),
+                         "NCchi"=kldistnorm1(theta,y,shape)
+                         )
+exceedence0 <- .Fortran("exceed",
+                           as.double(KLdist0),
+                           as.integer(length(KLdist0)),
+                           as.double(z),
+                           as.integer(nz),
+                           exprob=double(nz),
+                           PACKAGE="aws",DUP=FALSE)$exprob
+#
+#  now iterate
+#
+t0 <- Sys.time()
+cat("using lambda=",lambda,"\n")
+while (k<=kstar){
+      t1 <- Sys.time()
       hakt0 <- gethani(1,1.25*hmax,lkern,1.25^(k-1),wghts,1e-4)
       hakt <- gethani(1,1.25*hmax,lkern,1.25^k,wghts,1e-4)
       cat("step",k,"hakt",hakt,"\n")
@@ -59,28 +144,43 @@ dlw<-(2*trunc(hakt/c(1,wghts))+1)[1:d]
 #
 #   get nonadaptive estimate
 #
-zobj0 <- .Fortran("caws",as.double(y),
-                       as.logical(fix),
+if(!homogeneous&family=="Gaussian"){
+zobj0 <- .Fortran("chaws1",as.double(y),
+                       as.double(sigma2),
                        as.integer(n1),
                        as.integer(n2),
                        as.integer(n3),
                        hakt=as.double(hakt),
-                       hhom=as.double(hhom),
-                       as.double(1e50),
-                       as.double(tobj$theta),
-                       bi=as.double(zobj0$bi),
-		       bi2=double(n),
-                       bi0=as.double(zobj0$bi0),
-                       ai=as.double(zobj0$ai),
+                       bi=double(n),
+                       double(n),
+                       double(n),
+                       double(n),#vred
+                       ai=double(n),
                        as.integer(cpar$mcode),
                        as.integer(lkern),
-                       as.double(0.25),
-		       double(prod(dlw)),
+                       double(prod(dlw)),
                        as.double(wghts),
-                       PACKAGE="aws",DUP=TRUE)[c("bi","bi0","bi2","ai","hakt")]
+                       PACKAGE="aws",DUP=TRUE)[c("bi","ai","hakt")]
+} else {
+zobj0 <- .Fortran("caws1",as.double(y),
+                       as.integer(n1),
+                       as.integer(n2),
+                       as.integer(n3),
+                       hakt=as.double(hakt),
+                       bi=double(n),
+                       double(n),
+                       double(n),
+                       ai=double(n),
+                       as.integer(cpar$mcode),
+                       as.integer(lkern),
+                       double(prod(dlw)),
+                       as.double(wghts),
+                       PACKAGE="aws",DUP=TRUE)[c("bi","ai","hakt")]
+}
 if(family%in%c("Bernoulli","Poisson")) zobj0<-regularize(zobj0,family)
 yhat0 <- zobj0$ai/zobj0$bi
 dim(yhat0) <- dy
+bi <- zobj0$bi
 ih <- as.integer(hakt)
 ind1 <- (ih+1):(dy[1]-ih)
 if(length(dy)>1) ind2 <- (ih+1):(dy[2]-ih)
@@ -93,85 +193,148 @@ KLdist0 <- switch(family,"Gaussian"=yhat0^2/2,
                          "Bernoulli"=(yhat0*log(yhat0/theta)+
                                      (1-yhat0)*log((1-yhat0)/(1-theta))),
                          "Volatility"=(log(yhat0)-1+1/yhat0)/2,
-                         "Variance"=shape/2*(log(yhat0)-1+1/yhat0))
-for(i in 1:61) exceedencena[i,k] <- mean(ni*KLdist0>z[i])
+                         "Variance"=shape/2*(log(yhat0)-1+1/yhat0),
+                         "NCchi"=kldistnorm1(theta,yhat0,shape))
+exceedencena[,k] <- .Fortran("exceed",
+                           as.double(KLdist0),
+                           as.integer(length(KLdist0)),
+                           as.double(z/ni),
+                           as.integer(nz),
+                           exprob=double(nz),
+                           PACKAGE="aws",DUP=FALSE)$exprob
 #
 #   get adaptive estimate
 #
+if(!homogeneous&family=="Gaussian"){
+zobj <- .Fortran("chaws",as.double(y),
+                       as.logical(rep(FALSE,n)),
+                       as.double(sigma2),
+                       as.integer(n1),
+                       as.integer(n2),
+                       as.integer(n3),
+                       hakt=as.double(hakt),
+                       as.double(lambda0),
+                       as.double(yhat),
+                       bi=as.double(bi),
+                       bi2=double(n),
+                       double(n),
+                       double(n),#vred
+                       ai=double(n),
+                       as.integer(cpar$mcode),
+                       as.integer(lkern),
+                       as.double(spmin),
+                       double(prod(dlw)),
+                       as.double(wghts),
+                       PACKAGE="aws",DUP=TRUE)[c("bi","bi2","ai","hakt")]
+} else {
+if(cpar$mcode==6) bi <- bi/fncchiv(yhat,varstats)
+##
+##   this takes care of the variance/mean dependence of the nc chi distribution 
+##
 zobj <- .Fortran("caws",as.double(y),
-                       as.logical(fix),
+                       as.logical(rep(FALSE,n)),
                        as.integer(n1),
                        as.integer(n2),
                        as.integer(n3),
                        hakt=as.double(hakt),
                        hhom=as.double(hhom),
                        as.double(lambda0),
-                       as.double(tobj$theta),
-                       bi=as.double(tobj$bi),
-		       bi2=double(n),
-                       bi0=as.double(zobj$bi0),
-                       ai=as.double(zobj$ai),
+                       as.double(yhat),
+                       bi=as.double(bi),
+                       bi2=double(n),
+                       double(n),
+                       ai=double(n),
                        as.integer(cpar$mcode),
                        as.integer(lkern),
-                       as.double(0.25),
-		       double(prod(dlw)),
+                       as.double(spmin),
+                       double(prod(dlw)),
                        as.double(wghts),
-                       PACKAGE="aws",DUP=TRUE)[c("bi","bi0","bi2","ai","hakt")]
+                       PACKAGE="aws",DUP=TRUE)[c("bi","bi2","ai","hakt")]
+}
 if(family%in%c("Bernoulli","Poisson")) zobj<-regularize(zobj,family)
 dim(zobj$ai)<-dy
-biold <- zobj$bi0
-tobj<-updtheta(zobj,tobj,cpar)
-dim(tobj$theta)<-dy
-dim(tobj$bi)<-dy
-dim(tobj$eta)<-dy
-dim(tobj$fix)<-dy
+yhat <-zobj$ai/zobj$bi
+dim(yhat)<-dy
+if(varadapt) bi <- bi^2/zobj$bi2
+if(maxni) bi <- pmax(bi,zobj$bi) else bi <- zobj$bi
 lambda0 <- lambda
-yhat <- tobj$theta
-bi <- tobj$bi
-yhat <- switch(length(dy),yhat[ind1],yhat[ind1,ind2],yhat[ind1,ind2,ind3])
-KLdist1 <- switch(family,"Gaussian"=yhat^2/2,
-                         "Poisson"=(theta-yhat+yhat*(log(yhat)-log(theta))),
-                         "Exponential"=(log(yhat)-1+1/yhat),
-                         "Bernoulli"=(yhat*log(yhat/theta)+
-                                     (1-yhat)*log((1-yhat)/(1-theta))),
-                         "Volatility"=(log(yhat)-1+1/yhat)/2,
-                         "Variance"=shape/2*(log(yhat)-1+1/yhat))
-bi <- switch(length(dy),bi[ind1],bi[ind1,ind2],bi[ind1,ind2,ind3])
-for(i in 1:55) pofalpha[i,k] <- mean(KLdist1 > (1+alpha[i])*KLdist0)
-#if(k>1) contour(log(alpha),h[1:k],pofalpha[,1:k]^.2,n=50,ylab="h",xlab="ln(alpha)",
-#       main=paste(family,length(dy),"-dim. ladj=",ladjust," p^(.2)"))
-if(k>1) contour(log(alpha),h[1:k],pofalpha[,1:k],levels=c(.5,.2,.1,.05,.02,.01,.005,
-                .002,.001,.0005,.0002,.0001,.00005,.00002,.00001,.000005,.000002,.000001),
-                       ylab="h",xlab="ln(alpha)",
-       main=paste(family,length(dy),"-dim. ladj=",ladjust," p"))
-#KLdist <- switch(family,"Gaussian"=ni*yhat^2/2,
-#                         "Poisson"=ni*(theta-yhat+yhat*(log(yhat)-log(theta))),
-#                         "Exponential"=ni*(log(yhat)-1+1/yhat),
-#                         "Bernoulli"=ni*(yhat*log(yhat/theta)+
-#                                     (1-yhat)*log((1-yhat)/(1-theta))),
-#                         "Volatility"=ni*(log(yhat)-1+1/yhat)/2,
-#                         "Variance"=ni*shape/2*(log(yhat)-1+1/yhat))
-for(i in 1:61) exceedence[i,k] <- mean(ni*KLdist1>z[i])
-#if(k>1) contour(z,h[1:k],exceedence[,1:k]^.2,n=50,ylab="h",xlab="z",
-#       main=paste(family,length(dy),"-dim. ladj=",ladjust," Exceed. Prob.^(.2)"))
-if(k>1){
-contour(z,h[1:k],exceedence[,1:k],levels=c(.5,.2,.1,.05,.02,.01,.005,
-                .002,.001,.0005,.0002,.0001,.00005,.00002,.00001,.000005,.000002,.000001),ylab="h",xlab="z",
+yhat0 <- switch(length(dy),yhat[ind1],yhat[ind1,ind2],yhat[ind1,ind2,ind3])
+KLdist1 <- switch(family,"Gaussian"=yhat0^2/2,
+                         "Poisson"=(theta-yhat0+yhat0*(log(yhat0)-log(theta))),
+                         "Exponential"=(log(yhat0)-1+1/yhat0),
+                         "Bernoulli"=(yhat0*log(yhat0/theta)+
+                                     (1-yhat0)*log((1-yhat0)/(1-theta))),
+                         "Volatility"=(log(yhat0)-1+1/yhat0)/2,
+                         "Variance"=shape/2*(log(yhat0)-1+1/yhat0),
+                         "NCchi"=kldistnorm1(theta,yhat0,shape))
+exceedence[,k] <- .Fortran("exceed",
+                           as.double(KLdist1),
+                           as.integer(length(KLdist1)),
+                           as.double(z/ni),
+                           as.integer(nz),
+                           exprob=double(nz),
+                           PACKAGE="aws",DUP=FALSE)$exprob
+                           
+contour(z,0:k,cbind(exceedence0,exceedence[,1:k]),levels=levels,ylab="step",xlab="z",
        main=paste(family,length(dy),"-dim. ladj=",ladjust," Exceed. Prob."))
-contour(z,h[1:k],exceedencena[,1:k],levels=c(.5,.2,.1,.05,.02,.01,.005,
-                .002,.001,.0005,.0002,.0001,.00005,.00002,.00001,.000005,.000002,.000001),ylab="h",xlab="z",
-       main=paste(family,length(dy),"-dim. ladj=",ladjust," Exceed. Prob."),add=TRUE,col=2,lty=3)
-       }
+contour(z,0:k,cbind(exceedence0,exceedencena[,1:k]),levels=levels,ylab="step",xlab="z",
+       add=TRUE,col=2,lty=3)
+       yaxp <- par("yaxp")
+       at <- unique(as.integer(seq(yaxp[1],yaxp[2],length=yaxp[3]+1)))
+       at <- at[at>0&at<=k]
+       axis(4,at=at,labels=as.character(signif(h[at],3)))
+       mtext("bandwidth",4,1.8)
 if (max(total) >0) {
-      cat(signif(total[k],2)*100,"% . ",sep="")
+      cat("Progress:",signif(total[k],2)*100,"% . ",sep="")
      }
+t2 <- Sys.time()
 tpar <- if(family%in%c("Bernoulli","Poisson"))  paste("theta=",theta) else  ""
-cat(family,"(dim:",length(dy),tpar,") ni=",ni,"e-prob:",signif(exceedence[4*(1:15)+1,k],3),"\n")
-cat("p",signif(pofalpha[5*(1:11),k],3),"\n")
-cat("Quantile KLdist0 (.5,.75,.9,.95,.99,.995,.999,1)",signif(quantile(KLdist0,c(.5,.75,.9,.95,.99,.995,.999,1)),3),"\n")
-cat("Quantile KLdist1 (.5,.75,.9,.95,.99,.995,.999,1)",signif(quantile(KLdist1,c(.5,.75,.9,.95,.99,.995,.999,1)),3),"\n")
+cat(family,"(dim:",length(dy),tpar,") ni=",ni," Time: Step",format(signif(difftime(t2,t1),3)),"Total",format(signif(difftime(t2,t0),3)),"\n")
 k <- k+1
 gc()
 }
-list(h=h,z=z,prob=exceedence,probna=exceedencena,pofalpha=pofalpha)
+if(family%in%c("Bernoulli","Poisson")) y <- y0
+
+list(h=h,z=z,prob=exceedence,probna=exceedencena,y=if(verbose) y else NULL , theta= if(verbose) yhat else NULL, levels=levels, family=family)
+}
+
+awsweights <- function(awsobj,spmin=0.25){
+if(awsobj@degree!=0 || awsobj@varmodel!="Constant"||
+any(awsobj@scorr!=0)) stop("Not implemented")
+dy <- awsobj@dy
+n1 <- dy[1]
+ldy <- length(dy)
+if(is.null(ldy)) ldy <- 1
+if(ldy>1) n2 <- dy[2] else n2 <- 1
+if(ldy==3) n3 <- dy[3] else n3 <- 1
+hakt <- awsobj@hmax
+n <- n1*n2*n3
+lambda0 <- awsobj@lambda
+yhat <- awsobj@theta
+bi <- awsobj@ni
+mcode <- switch(awsobj@family,
+                Gaussian=1,
+		Bernoulli=2,
+		Poisson=3,
+		Exponential=4,
+		Volatility=4,
+		Variance=5)
+lkern <- awsobj@lkern
+hakt <- rep(hakt,ldy)
+dlw<-(2*trunc(hakt)+1)
+zobj <- .Fortran("cawsw",
+                       as.integer(n1),
+                       as.integer(n2),
+                       as.integer(n3),
+                       hakt=as.double(hakt),
+                       as.double(lambda0),
+                       as.double(yhat),
+                       bi=as.double(bi),
+                       as.integer(mcode),
+                       as.integer(lkern),
+                       as.double(spmin),
+                       double(prod(dlw)),
+                       wghts=double(n*n),
+                       PACKAGE="aws",DUP=TRUE)$wghts
+array(zobj,c(dy,dy))
 }

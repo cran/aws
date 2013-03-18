@@ -89,7 +89,6 @@ dy <- switch(d,NULL,c(n1,n2))
 #  
 tobj<-list(bi= ni, bi2= ni^2, theta= yy/shape, fix=rep(FALSE,nn))
 zobj<-list(ai=yy, bi0= rep(1,nn))
-biold<-ni
 vred<-ni
 lambda0<-1e50 # that removes the stochstic term for the first step, initialization by kernel estimates
 #
@@ -107,15 +106,15 @@ hobj <- .Fortran("cawsmask",as.double(yy),
                        as.double(1e40),
                        as.double(tobj$theta),
                        bi=as.double(tobj$bi),
-		       bi2=double(nn),
+		                 bi2=double(nn),
                        bi0=as.double(zobj$bi0),
                        ai=as.double(zobj$ai),
                        as.integer(cpar$mcode),
                        as.integer(lkern),
                        as.double(0.25),
-		       double(prod(dlw)),
-		       as.double(wghts),
-		       PACKAGE="aws",DUP=FALSE)[c("bi","ai")]
+		                 double(prod(dlw)),
+		                 as.double(wghts),
+		                 PACKAGE="aws",DUP=TRUE)[c("bi","ai")]
 hobj$theta <- hobj$ai/hobj$bi
 hobj$theta[ni==0]<-mean(hobj$theta[ni>0])
 dim(hobj$theta) <- dim(hobj$bi) <- dy
@@ -145,20 +144,19 @@ zobj <- .Fortran("cgawsmas",as.double(yy),
                        as.double(lambda0),
                        as.double(tobj$theta),
                        bi=as.double(tobj$bi),
-		       bi2=double(nn),
+		                 bi2=double(nn),
                        bi0=as.double(zobj$bi0),
-		       vred=double(nn),
+		                 vred=double(nn),
                        ai=as.double(zobj$ai),
                        as.integer(cpar$mcode),
                        as.integer(lkern),
-	               as.double(0.25),
-		       double(prod(dlw)),
-		       as.double(wghts),
-		       PACKAGE="aws",DUP=FALSE)[c("bi","bi0","bi2","vred","ai","hakt")]
+	                    as.double(0.25),
+		                 double(prod(dlw)),
+		                 as.double(wghts),
+		                 PACKAGE="aws",DUP=TRUE)[c("bi","bi0","bi2","vred","ai","hakt")]
 vred[!tobj$fix]<-zobj$vred[!tobj$fix]
 dim(zobj$ai)<-dy
 if(hakt>n1/2) zobj$bi0 <- rep(max(zobj$bi),n1*n2)
-biold <- zobj$bi0
 tobj<-updtheta(zobj,tobj,cpar)
 tobj$vred <- vred
 tobj$theta[tobj$bi==0]<-mean(tobj$theta[ni>0])
