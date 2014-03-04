@@ -33,16 +33,15 @@ C   minvalue minimum observed value of test statistics
       external lkern
       hakt2=hakt*hakt
       spf=4.d0/3.d0
-      ih1=hakt
       aws=lambda.lt.1d40
       maxvalue=-1.d4
       minvalue=1.d4
 C
 C   first calculate location weights
 C
-      ih3=hakt/wght(2)
-      ih2=hakt/wght(1)
-      ih1=hakt
+      ih3=FLOOR(hakt/wght(2))
+      ih2=FLOOR(hakt/wght(1))
+      ih1=FLOOR(hakt)
       if(n3.eq.1) ih3=0
       if(n2.eq.1) ih2=0
       clw1=ih1+1
@@ -57,7 +56,7 @@ C
          if(n3.gt.1) THEN
             z3=(clw3-j3)*wght(2)
             z3=z3*z3
-            ih2=sqrt(hakt2-z3)/wght(1)
+            ih2=FLOOR(sqrt(hakt2-z3)/wght(1))
             jind3=(j3-1)*dlw1*dlw2
          ELSE
             jind3=0
@@ -66,7 +65,7 @@ C
             if(n2.gt.1) THEN
                z2=(clw2-j2)*wght(1)
                z2=z3+z2*z2
-               ih1=sqrt(hakt2-z2)
+               ih1=FLOOR(sqrt(hakt2-z2))
                jind2=jind3+(j2-1)*dlw1
             ELSE
                jind2=0
@@ -89,7 +88,7 @@ C  this is the plateau kernel
                s2i = si2(iind)
                bii=bi(iind)/lambda
 C   scaling of sij outside the loop
-               if(n3.gt.1) ih3=hakt/wght(2)
+               if(n3.gt.1) ih3=FLOOR(hakt/wght(2))
                swj=0.d0
                swj2=0.d0
                swjy=0.d0
@@ -99,7 +98,7 @@ C   scaling of sij outside the loop
                   jind3=(j3-1)*n1*n2
                   z3=(clw3-jw3)*wght(2)
                   z3=z3*z3
-                  if(n2.gt.1) ih2=sqrt(hakt2-z3)/wght(1)
+                  if(n2.gt.1) ih2=FLOOR(sqrt(hakt2-z3)/wght(1))
                   jwind3=(jw3-1)*dlw1*dlw2
                   DO jw2=clw2-ih2,clw2+ih2
                      j2=jw2-clw2+i2
@@ -107,7 +106,7 @@ C   scaling of sij outside the loop
                      jind2=(j2-1)*n1+jind3
                      z2=(clw2-jw2)*wght(1)
                      z2=z3+z2*z2
-                     ih1=sqrt(hakt2-z2)
+                     ih1=FLOOR(sqrt(hakt2-z2))
                      jwind2=jwind3+(jw2-1)*dlw1
                      DO jw1=clw1-ih1,clw1+ih1
 C  first stochastic term

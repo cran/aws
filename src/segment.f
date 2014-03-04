@@ -21,11 +21,11 @@ C
       implicit logical (a-z)
       external lkern,fpchisq
       real*8 lkern,fpchisq
-      integer n1,n2,n3,kern,segm(1),segmn(1)
-      logical aws,fix(1)
-      real*8 y(1),theta(1),bi(1),bi0(1),thetan(1),lambda,wght(2),
-     1       bi2(1),hakt,lwght(1),si2(1),vred(1),spmin,gi(1),
-     2       level,delta,pvalue(1),beta,thresh,ext,varest(1),fov
+      integer n1,n2,n3,kern,segm(*),segmn(*)
+      logical aws,fix(*)
+      real*8 y(*),theta(*),bi(*),bi0(*),thetan(*),lambda,wght(2),
+     1       bi2(*),hakt,lwght(*),si2(*),vred(*),spmin,gi(*),
+     2       level,delta,pvalue(*),beta,thresh,ext,varest(*),fov
       integer ih1,ih2,ih3,i1,i2,i3,j1,j2,j3,jw1,jw2,jw3,jwind3,jwind2,
      1        iind,jind,jind3,jind2,clw1,clw2,clw3,dlw1,dlw2,dlw3,n12,
      2        segmi
@@ -34,14 +34,13 @@ C
      2        si2j
       hakt2=hakt*hakt
       spf=1.d0/(1.d0-spmin)
-      ih1=hakt
       aws=lambda.lt.1d40
 C
 C   first calculate location weights
 C
-      ih3=hakt/wght(2)
-      ih2=hakt/wght(1)
-      ih1=hakt
+      ih3=FLOOR(hakt/wght(2))
+      ih2=FLOOR(hakt/wght(1))
+      ih1=FLOOR(hakt)
       if(n3.eq.1) ih3=0
       if(n2.eq.1) ih2=0
       n12=n1*n2
@@ -61,7 +60,7 @@ C
          if(n3.gt.1) THEN
             z3=(clw3-j3)*wght2
             z3=z3*z3
-            ih2=sqrt(hakt2-z3)/wght1
+            ih2=FLOOR(sqrt(hakt2-z3)/wght1)
             jind3=(j3-1)*dlw1*dlw2
          ELSE
             jind3=0
@@ -70,7 +69,7 @@ C
             if(n2.gt.1) THEN
                z2=(clw2-j2)*wght1
                z2=z3+z2*z2
-               ih1=sqrt(hakt2-z2)
+               ih1=FLOOR(sqrt(hakt2-z2))
                jind2=jind3+(j2-1)*dlw1
             ELSE
                jind2=0
@@ -99,7 +98,7 @@ C  first stochastic term
             cofh = sqrt(beta*log(varest(iind)*s2i*fov))
            if(max(a-thi,thi-b)/sqrt(varest(iind))-cofh.gt.extthr) THEN
                   fix(iind)=.TRUE.
-                  if(segm(iind).eq.0) segm(iind)=sign(1.d0,thi-level)
+      if(segm(iind).eq.0) segm(iind)=FLOOR(sign(1.d0,thi-level))
 C we need to assign a value to segment before we can fix the decision
                ELSE
                   fix(iind)=.FALSE.
@@ -145,7 +144,7 @@ C   scaling of sij outside the loop
             jind3=(j3-1)*n12
             z3=(clw3-jw3)*wght2
             z3=z3*z3
-            if(n2.gt.1) ih2=sqrt(hakt2-z3)/wght1
+            if(n2.gt.1) ih2=FLOOR(sqrt(hakt2-z3)/wght1)
             jwind3=(jw3-1)*dlw1*dlw2
             DO jw2=clw2-ih2,clw2+ih2
                j2=jw2-clw2+i2
@@ -153,7 +152,7 @@ C   scaling of sij outside the loop
                jind2=(j2-1)*n1+jind3
                z2=(clw2-jw2)*wght1
                z2=z3+z2*z2
-               ih1=sqrt(hakt2-z2)
+               ih1=FLOOR(sqrt(hakt2-z2))
                jwind2=jwind3+(jw2-1)*dlw1
                DO jw1=clw1-ih1,clw1+ih1
 C  first stochastic term
@@ -234,11 +233,11 @@ C
       implicit logical (a-z)
       external lkern,fpchisq
       real*8 lkern,fpchisq
-      integer n1,n2,n3,kern,segm(1),segmn(1)
-      logical aws,fix(1)
-      real*8 y(1),theta(1),bi(1),bi0(1),thetan(1),lambda,wght(2),
-     1       bi2(1),hakt,lwght(1),si2(1),vred(1),spmin,gi(1),
-     2       level,delta,pvalue(1),beta,thresh,ext,varest(1),fov
+      integer n1,n2,n3,kern,segm(*),segmn(*)
+      logical aws,fix(*)
+      real*8 y(*),theta(*),bi(*),bi0(*),thetan(*),lambda,wght(2),
+     1       bi2(*),hakt,lwght(*),si2(*),vred(*),spmin,gi(*),
+     2       level,delta,pvalue(*),beta,thresh,ext,varest(*),fov
       integer ih1,ih2,ih3,i1,i2,i3,j1,j2,j3,jw1,jw2,jw3,jwind3,jwind2,
      1        iind,jind,jind3,jind2,clw1,clw2,clw3,dlw1,dlw2,dlw3,n12,
      2        segmi
@@ -247,14 +246,13 @@ C
      2        si2j
       hakt2=hakt*hakt
       spf=1.d0/(1.d0-spmin)
-      ih1=hakt
       aws=lambda.lt.1d40
 C
 C   first calculate location weights
 C
-      ih3=hakt/wght(2)
-      ih2=hakt/wght(1)
-      ih1=hakt
+      ih3=FLOOR(hakt/wght(2))
+      ih2=FLOOR(hakt/wght(1))
+      ih1=FLOOR(hakt)
       if(n3.eq.1) ih3=0
       if(n2.eq.1) ih2=0
       n12=n1*n2
@@ -274,7 +272,7 @@ C
          if(n3.gt.1) THEN
             z3=(clw3-j3)*wght2
             z3=z3*z3
-            ih2=sqrt(hakt2-z3)/wght1
+            ih2=FLOOR(sqrt(hakt2-z3)/wght1)
             jind3=(j3-1)*dlw1*dlw2
          ELSE
             jind3=0
@@ -283,7 +281,7 @@ C
             if(n2.gt.1) THEN
                z2=(clw2-j2)*wght1
                z2=z3+z2*z2
-               ih1=sqrt(hakt2-z2)
+               ih1=FLOOR(sqrt(hakt2-z2))
                jind2=jind3+(j2-1)*dlw1
             ELSE
                jind2=0
@@ -312,7 +310,7 @@ C  first stochastic term
             cofh = sqrt(beta*log(varest(iind)*s2i*fov))
            if(max(a-thi,thi-b)/sqrt(varest(iind))-cofh.gt.extthr) THEN
                   fix(iind)=.TRUE.
-                  if(segm(iind).eq.0) segm(iind)=sign(1.d0,thi-level)
+      if(segm(iind).eq.0) segm(iind)=Floor(sign(1.d0,thi-level))
 C we need to assign a value to segment before we can fix the decision
                ELSE
                   fix(iind)=.FALSE.
@@ -358,7 +356,7 @@ C   scaling of sij outside the loop
             jind3=(j3-1)*n12
             z3=(clw3-jw3)*wght2
             z3=z3*z3
-            if(n2.gt.1) ih2=sqrt(hakt2-z3)/wght1
+            if(n2.gt.1) ih2=FLOOR(sqrt(hakt2-z3)/wght1)
             jwind3=(jw3-1)*dlw1*dlw2
             DO jw2=clw2-ih2,clw2+ih2
                j2=jw2-clw2+i2
@@ -366,7 +364,7 @@ C   scaling of sij outside the loop
                jind2=(j2-1)*n1+jind3
                z2=(clw2-jw2)*wght1
                z2=z3+z2*z2
-               ih1=sqrt(hakt2-z2)
+               ih1=FLOOR(sqrt(hakt2-z2))
                jwind2=jwind3+(jw2-1)*dlw1
                DO jw1=clw1-ih1,clw1+ih1
 C  first stochastic term

@@ -20,22 +20,21 @@ C
       implicit logical (a-z)
       external kldist,lkern
       real*8 kldist,lkern
-      integer n1,n2,model,kern,ni(1)
-      logical aws,fix(1),mask(1)
-      real*8 y(1),theta(1),bi(1),bi0(1),ai(1),lambda,wght,
-     1       bi2(1),hakt,lwght(1),spmin,spf
+      integer n1,n2,model,kern,ni(*)
+      logical aws,fix(*),mask(*)
+      real*8 y(*),theta(*),bi(*),bi0(*),ai(*),lambda,wght,
+     1       bi2(*),hakt,lwght(*),spmin,spf
       integer ih1,ih2,i1,i2,j1,j2,jw1,jw2,jwind2,
      1        iind,jind,jind2,clw1,clw2,dlw1,dlw2
       real*8 thetai,bii,sij,swj,swj2,swj0,swjy,z1,z2,wj,hakt2
       hakt2=hakt*hakt
       spf=1.d0/(1.d0-spmin)
-      ih1=hakt
       aws=lambda.lt.1d40
 C
 C   first calculate location weights
 C
-      ih2=hakt/wght
-      ih1=hakt
+      ih2=FLOOR(hakt/wght)
+      ih1=FLOOR(hakt)
       if(n2.eq.1) ih2=0
       clw1=ih1+1
       clw2=ih2+1
@@ -46,7 +45,7 @@ C
          if(n2.gt.1) THEN
             z2=(clw2-j2)*wght
             z2=z2*z2
-            ih1=sqrt(hakt2-z2)
+            ih1=FLOOR(sqrt(hakt2-z2))
             jind2=(j2-1)*dlw1
          ELSE
             jind2=0
@@ -89,7 +88,7 @@ C   scaling of sij outside the loop
                jind2=(j2-1)*n1
                z2=(clw2-jw2)*wght
                z2=z2*z2
-               ih1=sqrt(hakt2-z2)
+               ih1=FLOOR(sqrt(hakt2-z2))
                DO jw1=clw1-ih1,clw1+ih1
 C  first stochastic term
                   j1=jw1-clw1+i1
@@ -145,23 +144,22 @@ C
       implicit logical (a-z)
       external kldist,lkern
       real*8 kldist,lkern
-      integer n1,n2,model,kern,ni(1)
-      logical aws,fix(1),mask(1)
-      real*8 y(1),theta(1),bi(1),bi0(1),ai(1),lambda,wght,
-     1       bi2(1),hakt,lwght(1),si2(1),vred(1),spmin
+      integer n1,n2,model,kern,ni(*)
+      logical aws,fix(*),mask(*)
+      real*8 y(*),theta(*),bi(*),bi0(*),ai(*),lambda,wght,
+     1       bi2(*),hakt,lwght(*),si2(*),vred(*),spmin
       integer ih1,ih2,i1,i2,j1,j2,jw1,jw2,jwind2,
      1        iind,jind,jind2,clw1,clw2,dlw1,dlw2
       real*8 thetai,bii,sij,swj,swj2,swj0,swjy,z1,z2,wj,hakt2,
      1        sv1,sv2,spf,wj0
       hakt2=hakt*hakt
       spf=1.d0/(1.d0-spmin)
-      ih1=hakt
       aws=lambda.lt.1d40
 C
 C   first calculate location weights
 C
-      ih2=hakt/wght
-      ih1=hakt
+      ih2=FLOOR(hakt/wght)
+      ih1=FLOOR(hakt)
       if(n2.eq.1) ih2=0
       clw1=ih1+1
       clw2=ih2+1
@@ -172,7 +170,7 @@ C
             if(n2.gt.1) THEN
                z2=(clw2-j2)*wght
                z2=z2*z2
-               ih1=sqrt(hakt2-z2)
+               ih1=FLOOR(sqrt(hakt2-z2))
                jind2=(j2-1)*dlw1
             ELSE
                jind2=0
@@ -216,7 +214,7 @@ C   scaling of sij outside the loop
                   jind2=(j2-1)*n1
                   z2=(clw2-jw2)*wght
                   z2=z2*z2
-                  ih1=sqrt(hakt2-z2)
+                  ih1=FLOOR(sqrt(hakt2-z2))
                   jwind2=(jw2-1)*dlw1
                   DO jw1=clw1-ih1,clw1+ih1
 C  first stochastic term

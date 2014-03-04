@@ -10,12 +10,16 @@ appropriate values for the parameter \code{lambda} in function \code{aws}.
 }
 \usage{
 awstestprop(dy, hmax, theta = 1, family = "Gaussian", lkern = "Triangle", 
-        aws = TRUE, memory = FALSE, shape = 2, homogeneous=TRUE, varadapt=FALSE, ladjust = 1, spmin=0.25, seed = 1,
-                 minlevel=1e-6, maxz=25, diffz=.5, maxni=FALSE, verbose=FALSE)
+            aws = TRUE, memory = FALSE, shape = 2, homogeneous=TRUE, varadapt=FALSE, 
+            ladjust = 1, spmin=0.25, seed = 1, minlevel=1e-6, maxz=25, diffz=.5,
+            maxni=FALSE, verbose=FALSE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{dy}{ Dimension of grid used in 1D, 2D or 3D
+  \item{dy}{ Dimension of grid used in 1D, 2D or 3D. May also be specified as an array of values.
+  In this case data are generated with parameters \code{dy-mean(dy)+theta} and the propagation condition 
+  is testet as if \code{theta} is the true parameter. This can be used to study properties for a 
+  slighty misspecified structural assumption.
 }
   \item{hmax}{
     Maximum bandwidth.

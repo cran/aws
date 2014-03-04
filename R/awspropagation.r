@@ -2,60 +2,45 @@ awstestprop <- function(dy,hmax,theta=1,family="Gaussian",
                  lkern="Triangle",aws=TRUE,memory=FALSE,shape=2,
                  homogeneous=TRUE,varadapt=FALSE,ladjust=1,spmin=0.25,seed=1,
                  minlevel=1e-6,maxz=25,diffz=.5,maxni=FALSE,verbose=FALSE){
-if(length(dy)>3) return("maximum array dimension is 3")
-nnn <- prod(dy)
+if(length(dy)>3) {
+   cat("maximum array dimension is 3\n contents of first argument will be interpreted as array of
+   parameters\n")
+   nnn <- length(dy)
+} else {
+   nnn <- prod(dy)
+}
 if(minlevel < 5/nnn) {
 minlevel <- 5/nnn
 cat("minlevel reset to",minlevel,"due to insufficient size of test sample\n")
 }
 set.seed(seed)
 par(mfrow=c(1,1),mar=c(3,3,3,3),mgp=c(2,1,0))
-y <- array(switch(family,"Gaussian"=rnorm(nnn),
+if(length(dy)<=3){
+   y <- array(switch(family,"Gaussian"=rnorm(nnn),
                          "Poisson"=rpois(nnn,theta),
                          "Exponential"=rexp(nnn,1),
                          "Bernoulli"=rbinom(nnn,1,theta),
                          "Volatility"=rnorm(nnn),
                          "Variance"=rchisq(nnn,shape)/shape,
                          "NCchi"=sqrt(rchisq(nnn,shape,theta^2))),dy)
+} else {
+   ddy <- if(!is.null(dim(dy))) dim(dy) else length(dy)
+   y <- array(switch(family,"Gaussian"=rnorm(nnn,dy-mean(dy)),
+                         "Poisson"=rpois(nnn,dy-mean(dy)+theta),
+                         "Exponential"=rexp(nnn,dy-mean(dy)+1),
+                         "Bernoulli"=rbinom(nnn,1,dy-mean(dy)+theta),
+                         "Volatility"=rnorm(nnn,dy-mean(dy)),
+                         "Variance"=rchisq(nnn,dy-mean(dy)+shape)/(dy-mean(dy)+shape),
+                         "NCchi"=sqrt(rchisq(nnn,shape,(dy-mean(dy)+theta)^2))),ddy)
+   dy <- ddy
+}
+cat("minlevel ",minlevel,"due to insufficient size of test sample\n")
 if(family=="NCchi"){
-require(gsl)
-##
-##  define functions to access sd and var of noncentral chi 
-##  as functions of the noncenttrality parameter or expectation 
-##
-sofmchi <- function(L){
-minlev <- sqrt(2)*gamma(L+.5)/gamma(L)
-x <- seq(0,50,.01)
-mu <- sqrt(pi/2)*gamma(L+1/2)/gamma(1.5)/gamma(L)*hyperg_1F1(-0.5,L, -x^2/2, give=FALSE, strict=TRUE)
-s2 <- 2*L+x^2-mu^2
-s <- sqrt(s2)
-## return list containing values of noncentrality parameter (ncp),
-## mean (mu), standard deviation (sd) and variance (s2) to be used
-## in variance modeling
-list(ncp=x,mu=mu,s=s,s2=s2,minlev=minlev,L=L)
-}
-
-fncchis <- function(mu,varstats){
-mu <- pmax(varstats$minlev,mu)
-ind <- 
-findInterval(mu, varstats$mu, rightmost.closed = FALSE, all.inside = FALSE)
-varstats$s[ind]
-}
-
-fncchiv <- function(mu,varstats){
-mu <- pmax(varstats$minlev,mu)
-ind <- 
-findInterval(mu, varstats$mu, rightmost.closed = FALSE, all.inside = FALSE)
-varstats$s2[ind]
-}
-#
-#  
-#
 varstats <- sofmchi(shape/2) # precompute table of mean, sd and var for 
-}
 #
 #   NCchi for noncentral chi with shape=degrees of freedom and theta =NCP
 #
+}
 z <- seq(0,maxz,diffz)
 nz <- length(z)
 elevel <- trunc(log(1e-6,10))
@@ -104,7 +89,6 @@ if(family=="Poisson") y0 <- y+.1
 #  this corresponds to the regularization used to avoid Inf distances
 #
 kldistnorm1 <- function(th1,y,df){
-require(gsl)
 L <- df/2
 m1 <- sqrt(pi/2)*gamma(L+1/2)/gamma(1.5)/gamma(L)*hyperg_1F1(-0.5,L, -th1^2/2, give=FALSE, strict=TRUE)
 (m1-y)^2/2/(2*L+th1^2-m1^2)
@@ -227,11 +211,8 @@ zobj <- .Fortran("chaws",as.double(y),
                        as.double(wghts),
                        PACKAGE="aws",DUP=TRUE)[c("bi","bi2","ai","hakt")]
 } else {
-if(cpar$mcode==6) bi <- bi/fncchiv(yhat,varstats)
-##
-##   this takes care of the variance/mean dependence of the nc chi distribution 
-##
-zobj <- .Fortran("caws",as.double(y),
+if(cpar$mcode!=6){
+   zobj <- .Fortran("caws",as.double(y),
                        as.logical(rep(FALSE,n)),
                        as.integer(n1),
                        as.integer(n2),
@@ -250,6 +231,28 @@ zobj <- .Fortran("caws",as.double(y),
                        double(prod(dlw)),
                        as.double(wghts),
                        PACKAGE="aws",DUP=TRUE)[c("bi","bi2","ai","hakt")]
+} else {
+   zobj <- .Fortran("caws6",as.double(y),
+                       as.logical(rep(FALSE,n)),
+                       as.integer(n1),
+                       as.integer(n2),
+                       as.integer(n3),
+                       hakt=as.double(hakt),
+                       hhom=as.double(hhom),
+                       as.double(lambda0),
+                       as.double(yhat),
+                       as.double(fncchiv(yhat,varstats)/2),
+                       bi=as.double(bi),
+                       bi2=double(n),
+                       double(n),
+                       ai=double(n),
+                       as.integer(cpar$mcode),
+                       as.integer(lkern),
+                       as.double(spmin),
+                       double(prod(dlw)),
+                       as.double(wghts),
+                       PACKAGE="aws",DUP=TRUE)[c("bi","bi2","ai","hakt")]
+}
 }
 if(family%in%c("Bernoulli","Poisson")) zobj<-regularize(zobj,family)
 dim(zobj$ai)<-dy
