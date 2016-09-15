@@ -51,7 +51,6 @@ kernsm<-function (y, h = 1, kern="Gaussian", m=0, nsector=1, sector=1, symmetric
                 as.integer(ikern),
                 as.integer(m),
                 khofx=double(nx),
-                DUPL=TRUE,
                 PACKAGE="aws")$khofx
     }
     lkern <- function(xp,kind="Gaussian",m=0,nsector=1,sector=1,symmetric=FALSE){
@@ -114,7 +113,6 @@ kernsm<-function (y, h = 1, kern="Gaussian", m=0, nsector=1, sector=1, symmetric
                                 as.integer(sector),
                                 as.logical(symmetric),
                                 insector=double(xp$dx1[1]*xp$dx1[2]),
-                                DUPL=TRUE,
                                 PACKAGE="aws")$insector                               
              kwghts <- kwghts*array(sector,xp$dx1)
           }
@@ -216,14 +214,12 @@ ICIsmooth <- function(y, hmax, hinc=1.45, thresh=NULL, kern="Gaussian", m=0, sig
                                  as.double(hbest),
                                  as.integer(n),
                                  hbest=double(n),
-                                 DUPL=TRUE,
                                  PACKAGE="aws")$hbest,
                         .Fortran("median2d",
                                  as.double(hbest),
                                  as.integer(dy[1]),
                                  as.integer(dy[2]),
                                  hbest=double(n),
-                                 DUPL=TRUE,
                                  PACKAGE="aws")$hbest,
                         .Fortran("median3d",
                                  as.double(hbest),
@@ -231,7 +227,6 @@ ICIsmooth <- function(y, hmax, hinc=1.45, thresh=NULL, kern="Gaussian", m=0, sig
                                  as.integer(dy[2]),
                                  as.integer(dy[3]),
                                  hbest=double(n),
-                                 DUPL=TRUE,
                                  PACKAGE="aws")$hbest)
       hakt <- if(all(m==0)) { if(kern=="Gaussian") .3 else 1 }
       else { if(kern=="Gaussian") .6 else hinc*(max(m)+1) }
@@ -250,7 +245,7 @@ ICIsmooth <- function(y, hmax, hinc=1.45, thresh=NULL, kern="Gaussian", m=0, sig
                 vhat=vhat,hbest=hbest,sigma=sigma,call=args)
 }
 ICIcombined <- function(y, hmax, hinc=1.45, thresh=NULL, kern="Gaussian", m=0, 
-                 sigma = NULL, nsector=1, symmetric=FALSE, presmooth=FALSE){
+                 sigma = NULL, nsector=1, symmetric=FALSE, presmooth=FALSE, combine="weighted"){
    args <- match.call()
    if(any(m>0)&nsector>1){
       nsector <- 1
@@ -272,24 +267,35 @@ ICIcombined <- function(y, hmax, hinc=1.45, thresh=NULL, kern="Gaussian", m=0,
    }
    if(is.null(sigma)) sigma <- median(abs(y[-1]-y[-n]))/.9538
    if(nsector==1){
-      return(ICIsmooth(y, hmax, hinc, thresh, kern, m, 1, 1, symmetric, presmooth))
-   } else {
-      yhatc <- array(0,c(nsector,prod(dy)))
-      vhatc <- array(0,c(nsector,prod(dy)))
-      hbest <- numeric(prod(dy))
-      for(i in 1:nsector){
-         z <- ICIsmooth(y, hmax, hinc, thresh, kern, m, sigma, nsector, i, symmetric, presmooth)
-         yhatc[i,] <- z@yhat
-         vhatc[i,] <- z@vhat
-         hbest <- hbest+z@hbest
-      }
-      hbest <- hbest/nsector
+      return(ICIsmooth(y, hmax, hinc, thresh, kern, m, sigma, 1, symmetric, presmooth))
+   } 
+   yhatc <- array(0,c(nsector,prod(dy)))
+   vhatc <- array(0,c(nsector,prod(dy)))
+   hbest <- numeric(prod(dy))
+#
+#  adaptive bandwidth selection for the nsector sectors using function ICIsmooth
+#
+   for(i in 1:nsector){
+      z <- ICIsmooth(y, hmax, hinc, thresh, kern, m, sigma, nsector, i, symmetric, presmooth)
+      yhatc[i,] <- z@yhat
+      vhatc[i,] <- z@vhat
+      hbest <- hbest+z@hbest
+   }
+   hbest <- hbest/nsector
+#  mean bandwidth
+   if(combine=="weighted"){
+#
+#  combine sectorial estimates by weighted adaptive mean Katkovnik (6.43)
+#
       vhatinv <- 1/vhatc[1,]
       for(i in 2:nsector) vhatinv <- vhatinv+1/vhatc[i,]
       vhat <- 1/vhatinv
       yhat <- vhat/vhatc[1,]*yhatc[1,]
       for(i in 2:nsector) yhat <- yhat+vhat/vhatc[i,]*yhatc[i,]
-   }
+   } else { # least variance sectorial estimate Katkovnik (6.46)
+      ihat <- apply(vhat,2,order)[1,]
+      for(i in 1:nsector) yhat[ihat==i]<-yhatc[i,ihat==i]
+   } 
    ICIsmoothobj(y,h=hmax,hinc=hinc,thresh=thresh,kern=kern,m=m,nsector=nsector,
                 sector=0,symmetric=symmetric,yhat=array(yhat,dy),vhat=vhat,
                 hbest=hbest,sigma=sigma,call=args)
