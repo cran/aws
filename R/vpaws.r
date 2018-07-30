@@ -1,13 +1,14 @@
-vaws <- function(y,
-                 kstar = 16,
-                 sigma2 = 1,
-                 mask = NULL,
-                 scorr = 0,
-                 spmin = 0.25,
-                 ladjust = 1,
-                 wghts = NULL,
-                 u = NULL,
-                 maxni = FALSE) {
+vpaws <- function(y,
+                  kstar = 16,
+                  sigma2 = 1,
+                  mask = NULL,
+                  scorr = 0,
+                  spmin = 0.25,
+                  ladjust = 1,
+                  wghts = NULL,
+                  u = NULL,
+                  maxni = FALSE,
+                  patchsize = 1) {
   args <- match.call()
   dy <- dim(y)
   nvec <- dy[1]
@@ -49,6 +50,15 @@ vaws <- function(y,
   cat("Progress:")
   total <- cumsum(1.25 ^ (1:kstar)) / sum(1.25 ^ (1:kstar))
   mc.cores <- setCores(, reprt = FALSE)
+  np1 <- 2 * patchsize + 1
+  np2 <- if (n2 > 1)
+    2 * patchsize + 1
+  else
+    1
+  np3 <- if (n3 > 1)
+    2 * patchsize + 1
+  else
+    1
   k <- 1
   hmax <- 1.25 ^ (kstar / d)
   lambda0 <- lambda
@@ -63,7 +73,7 @@ vaws <- function(y,
       lambda0 <-
       lambda0 * Spatialvar.gauss(hakt0 / 0.42445 / 4, h0, d) / Spatialvar.gauss(hakt0 /
                                                                                   0.42445 / 4, 1e-5, d)
-    zobj <- .Fortran(C_vaws,
+    zobj <- .Fortran(C_pvaws,
       as.double(y),
       as.logical(mask),
       as.integer(nvec),
@@ -73,15 +83,17 @@ vaws <- function(y,
       hakt = as.double(hakt),
       as.double(lambda0),
       as.double(zobj$theta),
-      bi = as.double(zobj$bi),
-      vred = double(n),
+      as.double(zobj$bi),
+      bi = double(n),
       theta = double(nvec * n),
       as.integer(mc.cores),
       as.double(spmin),
       double(prod(dlw)),
       as.double(wghts),
-      double(nvec * mc.cores)
-    )[c("bi", "theta", "hakt","vred")]
+      double(nvec * mc.cores),
+      as.integer(np1),
+      as.integer(np2),
+      as.integer(np3))[c("bi", "theta", "hakt")]
     dim(zobj$theta) <- c(nvec, dy)
     if (maxni)
       bi <- zobj$bi <- pmax(bi, zobj$bi)
@@ -115,7 +127,7 @@ vaws <- function(y,
   awsobj(
     y,
     zobj$theta,
-    sigma2 * zobj$vred,
+    sigma2 / zobj$bi,
     hakt,
     sigma2,
     lkern = 1L,
@@ -134,7 +146,8 @@ vaws <- function(y,
     ni = zobj$bi
   )
 }
-vawscov <- function(y,
+
+vpawscov <- function(y,
                       kstar = 16,
                       invcov = NULL,
                       mask = NULL,
@@ -143,7 +156,8 @@ vawscov <- function(y,
                       ladjust = 1,
                       wghts = NULL,
                       u = NULL,
-                      maxni = FALSE) {
+                      maxni = FALSE,
+                      patchsize = 1) {
   ##
   ##  this is the version with full size invcov (triangular storage)
   ##  needed for MPM
@@ -188,6 +202,15 @@ vawscov <- function(y,
   cat("Progress:")
   total <- cumsum(1.25 ^ (1:kstar)) / sum(1.25 ^ (1:kstar))
   mc.cores <- setCores(, reprt = FALSE)
+  np1 <- 2 * patchsize + 1
+  np2 <- if (n2 > 1)
+    2 * patchsize + 1
+  else
+    1
+  np3 <- if (n3 > 1)
+    2 * patchsize + 1
+  else
+    1
   k <- 1
   hmax <- 1.25 ^ (kstar / d)
   lambda0 <- lambda
@@ -202,7 +225,7 @@ vawscov <- function(y,
       lambda0 <-
       lambda0 * Spatialvar.gauss(hakt0 / 0.42445 / 4, h0, d) / Spatialvar.gauss(hakt0 /
                                                                                   0.42445 / 4, 1e-5, d)
-    zobj <- .Fortran(C_vaws2,
+    zobj <- .Fortran(C_pvaws2,
       as.double(y),
       as.logical(mask),
       as.integer(nvec),
@@ -213,8 +236,8 @@ vawscov <- function(y,
       hakt = as.double(hakt),
       as.double(lambda0),
       as.double(zobj$theta),
-      bi = as.double(zobj$bi),
-      vred = double(n),
+      as.double(zobj$bi),
+      bi = double(n), #binn
       theta = double(nvec * n),
       as.double(invcov),
       as.integer(mc.cores),
@@ -222,9 +245,9 @@ vawscov <- function(y,
       double(prod(dlw)),
       as.double(wghts),
       double(nvec * mc.cores),
-      double(nvec * mc.cores),
-      double(nvec * (nvec + 1) / 2 * mc.cores)
-    )[c("bi", "theta", "hakt", "vred")]
+      as.integer(np1),
+      as.integer(np2),
+      as.integer(np3))[c("bi", "theta", "hakt")]
     dim(zobj$theta) <- c(nvec, dy)
     if (maxni)
       bi <- zobj$bi <- pmax(bi, zobj$bi)
@@ -258,7 +281,7 @@ vawscov <- function(y,
   awsobj(
     y,
     zobj$theta,
-    sweep(invcov, 2:(d + 1), zobj$vred, "*"),
+    sweep(invcov, 2:(d + 1), zobj$bi, "*"),
     hakt,
     invcov,
     lkern = 1L,
