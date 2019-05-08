@@ -3,7 +3,7 @@
 #    for local constant Gaussian, Bernoulli, Exponential, Poisson, Weibull and
 #    Volatility models
 #
-#    emaphazises on the propagation-separation approach
+#    emphazises on the propagation-separation approach
 #
 #    Copyright (C) 2006 Weierstrass-Institut fuer
 #                       Angewandte Analysis und Stochastik (WIAS)
@@ -102,7 +102,7 @@ paws <- function(y,
     } else if(length(dy)==2){
        ladjust <- switch(patchsize,1.1,1.1,1.2)*ladjust
   } else {
-       ladjust <- switch(patchsize,1.44,1.6)*ladjust
+       ladjust <- switch(patchsize,1.44,1.8)*ladjust
   }
 
     cpar <-

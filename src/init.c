@@ -64,6 +64,8 @@ void F77_NAME(chaws1)(double* y, double* si2, int* n1, int* n2,
   double* vred, double* ai, int* kern, double* lwght, double* wght);
 void F77_NAME(exceed)(double* x, int* n, double* z, int* nz,
   double* exprob);
+void F77_NAME(exceedm)(double* x, int* n, double* z, int* nz,
+    double* exprob, int* mask);
 void F77_NAME(gethani)(double* x, double* y, int* kern,
   double* value, double* wght, double* eps, double* bw);
 void F77_NAME(getvofh)(double* bw, int* kern, double* wght,
@@ -117,7 +119,7 @@ void F77_NAME(segment)(double* y, int* fix, double* level,
   double* spmin, double* lwght, double* wght, int* segm, int* segmn,
   double* beta, double* thresh, double* ext, double* fov, double* varest);
 void F77_NAME(vaws)(double* y, int* mask, int* nv, int* n1, int* n2,
-  int* n3, double* hakt, double* lambda, double* theta, double* bi, double* bin,
+  int* n3, double* hakt, double* lambda, double* theta, double* bi,
   double* vred, double* thnew, int* ncores, double* spmin, double* lwght,
   double* wght, double* swjy);
   void F77_NAME(vaws2)(double* y, int* mask, int* nv, int* nvd, int* n1,
@@ -175,6 +177,8 @@ static R_NativePrimitiveArgType chaws1_t[]={REALSXP, REALSXP, INTSXP, INTSXP,
   REALSXP};
 static R_NativePrimitiveArgType exceed_t[]={REALSXP, INTSXP, REALSXP, INTSXP,
   REALSXP};
+static R_NativePrimitiveArgType exceedm_t[]={REALSXP, INTSXP, REALSXP, INTSXP,
+  REALSXP, LGLSXP};
 static R_NativePrimitiveArgType gethani_t[]={REALSXP, REALSXP, INTSXP,
   REALSXP, REALSXP, REALSXP, REALSXP};
 static R_NativePrimitiveArgType getvofh_t[]={REALSXP, INTSXP, REALSXP, REALSXP};
@@ -217,7 +221,7 @@ static R_NativePrimitiveArgType segment_t[]={REALSXP, LGLSXP, REALSXP, REALSXP,
   REALSXP, REALSXP, REALSXP, REALSXP, INTSXP, REALSXP, REALSXP, REALSXP, INTSXP,
   INTSXP, REALSXP, REALSXP, REALSXP, REALSXP, REALSXP};
 static R_NativePrimitiveArgType vaws_t[]={REALSXP, LGLSXP, INTSXP, INTSXP,
-  INTSXP, INTSXP, REALSXP, REALSXP, REALSXP, REALSXP, REALSXP, REALSXP, REALSXP, INTSXP,
+  INTSXP, INTSXP, REALSXP, REALSXP, REALSXP, REALSXP, REALSXP, REALSXP, INTSXP,
   REALSXP, REALSXP, REALSXP, REALSXP};
 static R_NativePrimitiveArgType vaws2_t[]={REALSXP, LGLSXP, INTSXP, INTSXP,
   INTSXP, INTSXP, INTSXP, REALSXP, REALSXP, REALSXP, REALSXP, REALSXP,
@@ -250,6 +254,7 @@ static const R_FortranMethodDef fmethods[] = {
             {"chaws", (DL_FUNC) &chaws_ ,19, chaws_t},
             {"chaws1", (DL_FUNC) &chaws1_ ,14, chaws1_t},
             {"exceed", (DL_FUNC) &exceed_ ,5, exceed_t},
+            {"exceedm", (DL_FUNC) &exceedm_ ,6, exceedm_t},
             {"gethani", (DL_FUNC) &gethani_ ,7, gethani_t},
             {"getvofh", (DL_FUNC) &getvofh_ ,4, getvofh_t},
             {"lkern1", (DL_FUNC) &lkern1_ ,6, lkern1_t},
