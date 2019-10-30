@@ -1,9 +1,8 @@
 qmeasures <- function(img,ref,
      which=c("PSNR","MAE","MSE","RMSE","SSIM","MAGE","RMSGE"),mask=FALSE){
-     if(inherits(img,"aws")) img <- extract(img,"yhat")$yhat
-     if(inherits(img,"kernsm")) img <- img@yhat
-     if(inherits(img,"ICIsmooth")) img <- img@yhat
-     if(inherits(img,"nlmeans")) img <- img$theta
+     if(class(img)=="aws") img <- extract(img,"yhat")$yhat
+     if(class(img)%in%c("kernsm","ICIsmooth")) img <- img@yhat
+     if(class(img)=="nlmeans") img <- img$theta
      results <- list(NULL)
      if("PSNR" %in% which) results$PSNR <- getPSNR(img,ref,mask)
      if("MAE" %in% which) results$MAE <- getMAE(img,ref,mask)

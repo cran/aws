@@ -81,7 +81,7 @@ A list with components
 \item{probna}{the matrix of exceedence probabilities for corresponding nonadaptive estimates, columns corresponding to \code{h}}
 }
 \references{
-S. Becker, P. Mathe, Electron. J. Statist. (2013), 2702-2736, doi:10.1214/13-EJS860
+Becker (2013)
 %% ~put references to the literature/web site here ~
 }
 \author{

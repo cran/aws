@@ -1,89 +1,44 @@
 #########################################################################
 #
-#   functions to determine bandwidths and location weights in aws iterations
-#
-#########################################################################
-getvofh <- function(bw, lkern, wght) {
-  .Fortran(C_getvofh,
-    as.double(bw),
-    as.integer(lkern),
-    as.double(wght),
-    vol = double(1)
-  )$vol
-}
-gethani <- function(x, y, lkern, value, wght, eps = 1e-2) {
-  .Fortran(C_gethani,
-    as.double(x),
-    as.double(y),
-    as.integer(lkern),
-    as.double(value),
-    as.double(wght),
-    as.double(eps),
-    bw = double(1)
-  )$bw
-}
-getparam3d <- function(hsig, wght){
-#
-#  compute coordinate indices of voxel in vicinity of radiaus hsig
-#  and corresponding location weights
-#
-  nwmd <- prod(2*as.integer(hsig/c(1,wght))+1)
-  parammd <- .Fortran(C_paramw3,
-                      as.double(hsig),
-                      as.double(wght),
-                      ind=integer(3*nwmd),
-                      w=double(nwmd),
-                      n=as.integer(nwmd))[c("ind","w","n")]
-  nwmd <- parammd$n
-  parammd$ind <- parammd$ind[1:(3*nwmd)]
-  parammd$w <- parammd$w[1:nwmd]
-  dim(parammd$ind) <- c(3,nwmd)
-  parammd
-}
-
-#########################################################################
-#
 #   functions to handle the  noncentral chi case (mcode=6)
 #
 #########################################################################
-
-sofmchi <- function(L, to = 50, delta = .01){
-##
-##  need to <=53  for hg1f1 to work precisely using limiting form otherwise
-##
-  minlev <- sqrt(2) * gamma(L+.5)/gamma(L)
-  x <- seq(0, to, delta)
-  mu <- sqrt(pi/2)*gamma(L+1/2)/gamma(1.5)/gamma(L)*hg1f1(-0.5,L, -x^2/2)
-  s2 <- 2*L+x^2-mu^2
+sofmchi <- function(L) {
+  minlev <- sqrt(2) * gamma(L + .5) / gamma(L)
+  x <- seq(0, 50, .01)
+  mu <-
+    sqrt(pi / 2) * gamma(L + 1 / 2) / gamma(1.5) / gamma(L) * hyperg_1F1(-0.5, L,-x ^
+                                                                           2 / 2, give = FALSE, strict = TRUE)
+  s2 <- 2 * L + x ^ 2 - mu ^ 2
   s <- sqrt(s2)
   ## return list containing values of noncentrality parameter (ncp),
   ## mean (mu), standard deviation (sd) and variance (s2) to be used
   ## in variance modeling
-  list(ncp = x, mu = mu, s = s, s2 = s2, minlev = minlev, L = L)
+  list(
+    ncp = x,
+    mu = mu,
+    s = s,
+    s2 = s2,
+    minlev = minlev,
+    L = L
+  )
 }
 
-fncchir <- function(mu,varstats){
-  #
-  #  Bias-correction
-  #
-  varstats$ncp[findInterval(mu, varstats$mu, all.inside = TRUE)]
+fncchiv <- function(mu, varstats) {
+  mu <- pmax(varstats$minlev, mu)
+  ind <-
+    findInterval(mu,
+                 varstats$mu,
+                 rightmost.closed = FALSE,
+                 all.inside = FALSE)
+  varstats$s2[ind]
 }
-
-fncchis <- function(mu,varstats){
-  varstats$s[findInterval(mu, varstats$mu, all.inside = TRUE)]
-}
-
-fncchiv <- function(mu,varstats){
-  varstats$s2[findInterval(mu, varstats$mu, all.inside = TRUE)]
-}
-
 #########################################################################
 #
 #   binning in 1D -- 3D (adapted from binning function in package sm
 #
 #########################################################################
 binning <- function (x, y, nbins, xrange = NULL) {
-  if(any(nbins<2)) stop("aws:::binning - need at least 2 bins")
   dx <- dim(x)
   if (is.null(dx))
     d <- 1
@@ -211,17 +166,13 @@ binning <- function (x, y, nbins, xrange = NULL) {
   }
   result
 }
-
-fwhm2bw <- function(hfwhm) hfwhm/sqrt(8*log(2))
-bw2fwhm <- function(h) h*sqrt(8*log(2))
-
 Varcor.gauss <- function(h) {
   #
   #   Calculates a correction for the variance estimate obtained by (IQRdiff(y)/1.908)^2
   #
   #   in case of colored noise that was produced by smoothing with lkern and bandwidth h
   #
-  h <- pmax(fwhm2bw(h), 1e-5)
+  h <- pmax(h / 2.3548, 1e-5)
   ih <- trunc(4 * h) + 1
   dx <- 2 * ih + 1
   d <- length(h)
@@ -229,8 +180,12 @@ Varcor.gauss <- function(h) {
   if (d == 2)
     penl <- outer(penl, dnorm(((-ih[2]):ih[2]) / h[2]), "*")
   if (d == 3)
-    penl <- outer(penl, outer(dnorm(((-ih[2]):ih[2]) / h[2]),
-                              dnorm(((-ih[3]):ih[3]) / h[3]), "*"), "*")
+    penl <-
+    outer(penl, outer(dnorm(((
+      -ih[2]
+    ):ih[2]) / h[2]), dnorm(((
+      -ih[3]
+    ):ih[3]) / h[3]), "*"), "*")
   2 * sum(penl) ^ 2 / sum(diff(penl) ^ 2)
 }
 
@@ -241,10 +196,11 @@ Spatialvar.gauss <- function(h, h0, d) {
   #
   #   case of colored noise that was produced by smoothing with Gaussian kernel and bandwidth h0
   #
+  #   Spatialvariance(lkern,h,h0,d)/Spatialvariance(lkern,h,1e-5,d) gives the
   #   a factor for lambda to be used with bandwidth h
   #
   h0 <- max(1e-5, h0)
-  h <- fwhm2bw(h)
+  h <- h / 2.3548
   if (length(h) == 1)
     h <- rep(h, d)
   ih <- trunc(4 * h)
@@ -256,10 +212,13 @@ Spatialvar.gauss <- function(h, h0, d) {
     outer(dnorm(((-ih[1]):ih[1]) / h[1]), dnorm(((-ih[2]):ih[2]) / h[2]), "*")
   if (d == 3)
     penl <-
-    outer(dnorm(((-ih[1]):ih[1]) / h[1]), outer(dnorm(((-ih[2]):ih[2]) / h[2]),
-                                      dnorm(((-ih[3]):ih[3]) / h[3]), "*"), "*")
+    outer(dnorm(((-ih[1]):ih[1]) / h[1]), outer(dnorm(((
+      -ih[2]
+    ):ih[2]) / h[2]), dnorm(((
+      -ih[3]
+    ):ih[3]) / h[3]), "*"), "*")
   dim(penl) <- dx
-  h0 <- fwhm2bw(h0)
+  h0 <- h0 / 2.3548
   if (length(h0) == 1)
     h0 <- rep(h0, d)
   ih <- trunc(4 * h0)
@@ -272,8 +231,11 @@ Spatialvar.gauss <- function(h, h0, d) {
     outer(dnorm(((-ih[1]):ih[1]) / h0[1]), dnorm(((-ih[2]):ih[2]) / h0[2]), "*")
   if (d == 3)
     penl0 <-
-    outer(dnorm(((-ih[1]):ih[1]) / h0[1]), outer(dnorm(((-ih[2]):ih[2]) / h0[2]),
-                                     dnorm(((-ih[3]):ih[3]) / h0[3]), "*"), "*")
+    outer(dnorm(((-ih[1]):ih[1]) / h0[1]), outer(dnorm(((
+      -ih[2]
+    ):ih[2]) / h0[2]), dnorm(((
+      -ih[3]
+    ):ih[3]) / h0[3]), "*"), "*")
   dim(penl0) <- dx0
   penl0 <- penl0 / sum(penl0)
   dz <- dx + dx0 - 1
@@ -334,67 +296,10 @@ get.corr.gauss <- function(h, interv = 1) {
   #   Calculates the correlation of
   #   colored noise that was produced by smoothing with "gaussian" kernel and bandwidth h
   #   Result does not depend on d for "Gaussian" kernel !!
-  h <- fwhm2bw(h) * interv
+  h <- h / 2.3548 * interv
   ih <- trunc(4 * h + 2 * interv - 1)
   dx <- 2 * ih + 1
   penl <- dnorm(((-ih):ih) / h)
   sum(penl[-(1:interv)] * penl[-((dx - interv + 1):dx)]) / sum(penl ^
                                                                  2)
-}
-
-residualVariance <- function(residuals, mask, resscale=1, compact=FALSE){
-   nt <- dim(residuals)[1]
-   nvoxel <- sum(mask)
-   if(!compact){
-      ddim <- dim(mask)
-      dim(residuals) <- c(nt,prod(ddim))
-      residuals <- residuals[,mask]
-   }
-   z <- .Fortran(C_ivar,as.double(residuals),
-                        as.double(resscale),
-                        as.integer(nvoxel),
-                        as.integer(nt),
-                        var = double(nvoxel))$var
-   if(compact){
-      resvar <- z
-   } else {
-      resvar <- array(0,ddim)
-      resvar[mask] <- z
-   }
-   resvar
-}
-
-#sweepMean <- function()
-
-residualSpatialCorr <- function(residuals, mask, lags=c(5,5,3), compact=FALSE){
-   nt <- dim(residuals)[1]
-   ddim <- dim(mask)
-   if(compact){
-#  for the current code we need to expand
-      res <- array(0,c(nt,prod(ddim)))
-      res[,mask] <- residuals
-      residuals <- res
-      rm(res)
-   }
-   corr <- .Fortran(C_imcorr, as.double(residuals), as.integer(mask),
-                    as.integer(ddim[1]), as.integer(ddim[2]), as.integer(ddim[3]),
-                    as.integer(nt), scorr = double(prod(lags)), as.integer(lags[1]),
-                    as.integer(lags[2]), as.integer(lags[3]))$scorr
-   dim(corr) <- lags
-   corr
-}
-
-hg1f1 <- function(a,b,z){
-##
-##  Confluent Hypergeometric 1F1 (a,b scalar, z vector)
-##  rel accuracy 1e-13 for z in -1400:700 for a=-.5, .5
-##  rel accuracy 2e-4 for z < -1400 for a=-.5, .5
-##
-   n <- length(z)
-   .Fortran(C_hg1f1,
-            as.double(a),
-            as.double(b),
-            as.double(z),
-            as.integer(n),
-            fz=double(n))$fz
 }
