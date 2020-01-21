@@ -11,12 +11,7 @@ handling of locally smooth functions and in 2D and 3D for improved smoothness of
 discontinuities at the expense of increased computing time.
 }
 \usage{
-paws(y, hmax = NULL, onestep = FALSE, aws = TRUE, family = "Gaussian",
-     lkern = "Triangle", aggkern = "Uniform", sigma2 = NULL, shape = NULL,
-     scorr = 0, spmin = 0.25, ladjust = 1, wghts = NULL, u = NULL,
-     graph = FALSE, demo = FALSE, maxni = FALSE, patchsize = 1,
-     patchkrit = "max", pquant = NULL)
-pawsm(y, mask, hmax = NULL, onestep = FALSE, aws = TRUE, family = "Gaussian",
+paws(y, hmax = NULL, mask=NULL, onestep = FALSE, aws = TRUE, family = "Gaussian",
      lkern = "Triangle", aggkern = "Uniform", sigma2 = NULL, shape = NULL,
      scorr = 0, spmin = 0.25, ladjust = 1, wghts = NULL, u = NULL,
      graph = FALSE, demo = FALSE, patchsize = 1)
@@ -83,23 +78,14 @@ a "true" value of the regression function, may be provided to
 }
   \item{demo}{ If \code{demo=TRUE} the function pauses after each iteration. Defaults to \code{demo=FALSE}.
 }
-  \item{maxni}{If TRUE use \eqn{max_{l<=k}(N_i^{(l)}} instead of \eqn{(N_i^{(k)}} in the definition of the statistical penalty.
-}
   \item{patchsize}{
   positive integer defining the size of patches. Number of grid points within the patch is \code{(2*patchsize+1)^d} with \code{d} denoting the dimensionality of the design.
-}
-  \item{patchkrit}{ defaults to our recommended statistical penalty. Alternatives
-   are \code{"quantile"} and numerical values (specifying a norm for patch comparisons). This argument is for
-   internal use (tests) only.
-}
-  \item{pquant}{
-  quantile to use with \code{patchkrit="quantile"}. For internal use only.
 }
 }
 \details{ see \code{\link{aws}. The procedure is supposed to produce superior results if the assumption of a local constant image is violated or if smooothness of discontinuities is desired.}
 }
 \value{
-returns anobject of class \code{aws} with slots
+returns an object of class \code{aws} with slots
                         \item{y = "numeric"}{y}
                         \item{dy = "numeric"}{dim(y)}
                         \item{x = "numeric"}{numeric(0)}
@@ -131,10 +117,13 @@ returns anobject of class \code{aws} with slots
                         \item{vcoef = "numeric"}{numeric(0)}
                         \item{call = "function"}{the arguments of the call to \code{aws}}
 }
-\references{
-Joerg Polzehl, Vladimir Spokoiny,  Adaptive Weights Smoothing with applications to image restoration,  J. R. Stat. Soc. Ser. B Stat. Methodol.  62 ,  (2000)  , pp. 335--354
+\references{J. Polzehl, K. Tabelow (2019). Magnetic Resonance Brain Imaging:
+             Modeling and Data Analysis Using R. Springer, Use R! series. Appendix A.
+             Doi:10.1007/978-3-030-29184-6.
 
-Joerg Polzehl, Vladimir Spokoiny,  Propagation-separation approach for local likelihood estimation,  Probab. Theory Related Fields  135 (3),  (2006)  , pp. 335--362.
+             J. Polzehl, K. Papafitsoros, K. Tabelow. Patch-wise adaptive weights smoothing,
+             Preprint no. 2520, WIAS, Berlin, 2018, DOI 10.20347/WIAS.PREPRINT.2520.
+             (to appear in Journal of Statistical Software).
 }
 \author{
 Joerg Polzehl, \email{polzehl@wias-berlin.de},

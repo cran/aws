@@ -34,7 +34,6 @@ aws.gaussian <- function(y,
            memory = FALSE,
            varmodel = "Constant",
            lkern = "Triangle",
-           homogen = TRUE,
            aggkern = "Uniform",
            scorr = 0,
            mask = NULL,
@@ -80,6 +79,17 @@ aws.gaussian <- function(y,
         mask <- rep(TRUE, length(y))
       else
         mask <- array(TRUE, dy)
+    } else {
+# diagnostics only without mask
+      u <- NULL
+      graph <- demo <-  FALSE
+    }
+    dmask <- dim(mask)
+    nvoxel <- sum(mask)
+    position <- array(0,dmask)
+    position[mask] <- 1:nvoxel
+    if(!is.null(u)){
+       if(!all(dim(u)==dmask))  u <- u[1]
     }
     lkern <- cpar$lkern
     lambda <-
@@ -117,18 +127,18 @@ aws.gaussian <- function(y,
     n1 <- switch(d, n, dy[1], dy[1])
     n2 <- switch(d, 1, dy[2], dy[2])
     n3 <- switch(d, 1, 1, dy[3])
+    if(d==1) dy[1] <- n
     #
     #    Initialize  for the iteration
     #
     #wghts<-(wghts[2:3]/wghts[1])
+    y <- y[mask]
     tobj <- list(
-      bi = rep(1, n),
-      bi2 = rep(1, n),
-      theta = y / shape,
-      fix = !mask
+      bi = rep(1, nvoxel),
+      bi2 = rep(1, nvoxel),
+      theta = y / shape
     )
-    zobj <- list(ai = y, bi0 = rep(1, n))
-    vred <- rep(1, n)
+    zobj <- list(ai = y, bi0 = rep(1, nvoxel))
     mae <- NULL
     lambda0 <-
       1e50 # that removes the stochstic term for the first step, initialization by kernel estimates
@@ -140,18 +150,17 @@ aws.gaussian <- function(y,
     dlw <- (2 * trunc(hpre / c(1, wghts)) + 1)[1:d]
     hobj <- .Fortran(C_caws,
       as.double(y),
-      as.integer(tobj$fix),
+      as.integer(position),
       as.integer(n1),
       as.integer(n2),
       as.integer(n3),
       as.double(hpre),
-      as.double(rep(1, n)),
       as.double(1e40),
-      as.double(tobj$theta),
-      bi = as.double(tobj$bi),
-      double(n),
-      as.double(zobj$bi0),
-      ai = as.double(zobj$ai),
+      double(nvoxel),
+      bi = as.double(rep(1,nvoxel)),
+      double(nvoxel),
+      as.double(rep(1,nvoxel)),
+      ai = as.double(rep(1,nvoxel)),
       as.integer(cpar$mcode),
       as.integer(lkern),
       as.double(0.25),
@@ -159,7 +168,6 @@ aws.gaussian <- function(y,
       as.double(wghts)
     )[c("bi", "ai")]
     hobj$theta <- hobj$ai / hobj$bi
-    dim(hobj$theta) <- dim(hobj$bi) <- dy
     #
     #   iteratate until maximal bandwidth is reached
     #
@@ -183,39 +191,30 @@ aws.gaussian <- function(y,
       # heteroskedastic Gaussian case
       zobj <- .Fortran(C_cgaws,
         as.double(y),
-        as.integer(tobj$fix),
-        as.integer(mask),
+        as.integer(position),
         as.double(sigma2),
         as.integer(n1),
         as.integer(n2),
         as.integer(n3),
         hakt = as.double(hakt),
-        hhom = as.double(rep(1, n)),
         as.double(lambda0),
         as.double(tobj$theta),
         bi = as.double(tobj$bi),
-        bi2 = double(n),
+        bi2 = double(nvoxel),
         bi0 = as.double(zobj$bi0),
-        gi = double(n),
-        vred = double(n),
+        gi = double(nvoxel),
+        gi2 = double(nvoxel),
         ai = as.double(zobj$ai),
         as.integer(lkern),
         as.double(0.25),
         double(prod(dlw)),
         as.double(wghts)
-      )[c("bi", "bi0", "bi2", "hhom", "vred", "ai", "gi", "hakt")]
-      vred[!tobj$fix] <- zobj$vred[!tobj$fix]
-      dim(zobj$ai) <- dy
+      )[c("bi", "bi0", "bi2", "ai", "gi", "gi2","hakt")]
       if (hakt > n1 / 2)
-        zobj$bi0 <- rep(max(zobj$bi), n)
+        zobj$bi0 <- rep(max(zobj$bi), nvoxel)
       tobj <- updtheta(zobj, tobj, cpar)
       tobj$gi <- zobj$gi
-      dim(tobj$theta) <- dy
-      dim(tobj$bi) <- dy
-      dim(tobj$eta) <- dy
-      dim(tobj$fix) <- dy
-      if (homogen)
-        hhom <- zobj$hhom
+      tobj$gi2 <- zobj$gi2
       if (graph) {
         #
         #     Display intermediate results if graph == TRUE
@@ -241,7 +240,7 @@ aws.gaussian <- function(y,
             mar = c(1, 1, 3, .25),
             mgp = c(2, 1, 0)
           )
-          image(y,
+          image(array(y,dy),
                 col = gray((0:255) / 255),
                 xaxt = "n",
                 yaxt = "n")
@@ -252,7 +251,7 @@ aws.gaussian <- function(y,
             signif(max(y), 3)
           ))
           image(
-            tobj$theta,
+            array(tobj$theta,dy),
             col = gray((0:255) / 255),
             xaxt = "n",
             yaxt = "n"
@@ -266,7 +265,7 @@ aws.gaussian <- function(y,
             signif(max(tobj$theta), 3)
           ))
           image(
-            tobj$bi,
+            array(tobj$bi,dy),
             col = gray((0:255) / 255),
             xaxt = "n",
             yaxt = "n"
@@ -279,22 +278,14 @@ aws.gaussian <- function(y,
             " max=",
             signif(max(tobj$bi), 3)
           ))
-          image(
-            tobj$fix,
-            col = gray((0:255) / 255),
-            xaxt = "n",
-            yaxt = "n",
-            zlim = c(0, 1)
-          )
-          title("Estimates fixed")
-        }
+          }
         if (d == 3) {
           oldpar <- par(
             mfrow = c(2, 2),
             mar = c(1, 1, 3, .25),
             mgp = c(2, 1, 0)
           )
-          image(y[, , n3 %/% 2 + 1],
+          image(array(y,dy)[, , n3 %/% 2 + 1],
                 col = gray((0:255) / 255),
                 xaxt = "n",
                 yaxt = "n")
@@ -305,7 +296,7 @@ aws.gaussian <- function(y,
             signif(max(y), 3)
           ))
           image(
-            tobj$theta[, , n3 %/% 2 + 1],
+            array(tobj$theta,dy)[, , n3 %/% 2 + 1],
             col = gray((0:255) / 255),
             xaxt = "n",
             yaxt = "n"
@@ -319,7 +310,7 @@ aws.gaussian <- function(y,
             signif(max(tobj$theta), 3)
           ))
           image(
-            tobj$bi[, , n3 %/% 2 + 1],
+            array(tobj$bi,dy)[, , n3 %/% 2 + 1],
             col = gray((0:255) / 255),
             xaxt = "n",
             yaxt = "n"
@@ -332,14 +323,6 @@ aws.gaussian <- function(y,
             " max=",
             signif(max(tobj$bi), 3)
           ))
-          image(
-            tobj$fix[, , n3 %/% 2 + 1],
-            col = gray((0:255) / 255),
-            xaxt = "n",
-            yaxt = "n",
-            zlim = c(0, 1)
-          )
-          title("Estimates fixed")
         }
         par(oldpar)
       }
@@ -372,10 +355,9 @@ aws.gaussian <- function(y,
       #
       #   Create new variance estimate
       #
-      vobj <- awsgsigma2(y, mask, hobj, tobj, varmodel, varprop, h0)
+      vobj <- awsgsigma2(y, hobj, tobj, varmodel, varprop)
       sigma2 <- vobj$sigma2inv
       coef <- vobj$coef
-      rm(vobj)
       x <- 1.25 ^ (k - 1)
       scorrfactor <- x / (3 ^ d * prod(scorr) * prod(h0) + x)
       lambda0 <- lambda * scorrfactor
@@ -391,13 +373,19 @@ aws.gaussian <- function(y,
     ###
     ###   component var contains an estimate of Var(tobj$theta) if aggkern="Uniform", or if qtau1=1
     ###
-    vartheta <- tobj$bi2 / tobj$bi ^ 2
+    vartheta <- array(0,dmask)
+    vartheta[mask] <- tobj$bi2 / tobj$bi ^ 2
     vartheta <-
       vartheta / Spatialvar.gauss(hakt / 0.42445 / 4, h0 + 1e-5, d) * Spatialvar.gauss(hakt /
-                                                                                         0.42445 / 4, 1e-5, d)
+                                                                     0.42445 / 4, 1e-5, d)
+    y0 <- theta <- sigma2 <- bi <- array(0,dmask)
+    theta[mask] <- tobj$theta
+    sigma2[mask] <- vobj$sigma2inv
+    y0[mask] <- y
+    bi[mask] <- tobj$bi
     awsobj(
-      y,
-      tobj$theta,
+      y0,
+      theta,
       vartheta,
       hakt,
       1 / sigma2,
@@ -407,7 +395,7 @@ aws.gaussian <- function(y,
       aws,
       memory,
       args,
-      homogen,
+      homogen = FALSE,
       earlystop = FALSE,
       family = "Gaussian",
       wghts = wghts,
@@ -415,7 +403,7 @@ aws.gaussian <- function(y,
       vcoef = coef,
       mae = mae,
       mask = mask,
-      ni = tobj$bi
+      ni = bi
     )
   }
 ###########################################################################
@@ -443,31 +431,26 @@ awsgfamily <- function(y, scorr, d) {
     sigma2 <- sigma2 * Varcor.gauss(h0)
   cat("Estimated variance: ", signif(sigma2, 4), "\n")
   sigma2 <- rep(sigma2, length(y))
-  dim(sigma2) <- dim(y)
   sigma2 <- 1 / sigma2 #  taking the invers yields simpler formulaes
   list(sigma2 = sigma2, h0 = h0)
 }
 ############################################################################
 #
-#  estimate inverse of variances
+#  estimate inverse of variances, uses nonadaptive hobj to stabilize,
+#    based on residual variance, constant/linear/quadratic
+#  expects only voxel within mask
 #
 ############################################################################
-awsgsigma2 <- function(y, mask, hobj, tobj, varmodel, varprop, h0) {
+awsgsigma2 <- function(y, hobj, tobj, varmodel, varprop) {
   if (is.null(dy <- dim(y)))
     dy <- length(y)
   if (is.null(dy))
     d <- 1
   else
     d <- length(dy)
-  corfactor <- 1
-  for (i in 1:d)
-    corfactor <-
-    corfactor * sum(dnorm((-5:5), 0, h0[i] * 0.59 + 1e-10)) / dnorm(0, 0, h0[i] *
-                                                                      0.59 + 1e-10)
-  ind <- tobj$gi > 1 & mask
+  ind <- tobj$gi > 1
   residsq <-
-    ((y - tobj$theta)[ind] * tobj$gi[ind] / (tobj$gi[ind] - pmin(.95 * tobj$gi[ind], corfactor))) ^
-    2
+    ((y - tobj$theta)[ind] * tobj$gi[ind] / (tobj$gi[ind] - pmin(.95*tobj$gi[ind],1)))^2
   theta <- tobj$theta[ind]
   if (varmodel == "Quadratic")
     theta2 <- theta ^ 2

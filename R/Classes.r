@@ -4,7 +4,8 @@ setClass(
     .Data = "list",
     y = "array",
     dy = "numeric",
-    x = "numeric",
+    nvec = "integer",
+    x = "matrix",
     ni = "array",
     mask = "logical",
     theta = "array",
@@ -212,9 +213,10 @@ awsobj <-  function(y,
            homogen = FALSE,
            earlystop = FALSE,
            family = "Gaussian",
+           nvec = 1L,
            degree = 0,
-           x = numeric(0),
-           ni = as.integer(1),
+           x = matrix(0,1,1),
+           ni = as.numeric(1),
            xmin = numeric(0),
            xmax = numeric(0),
            wghts = numeric(0),
@@ -230,15 +232,17 @@ awsobj <-  function(y,
       length(y)
     else
       dim(y)
+    dy0 <- if(nvec==1) dy else dy[-1]
     invisible(
       new(
         "aws",
         .Data = data,
         y = array(y, dy),
         dy = dy,
-        x = as.numeric(x),
-        ni = array(ni, dy),
+        x = x,
+        ni = array(ni, dy0),
         mask = as.logical(mask),
+        nvec = as.integer(nvec),
         theta = array(theta, if (degree == 0)
           dy
           else
@@ -301,7 +305,6 @@ awsobj <-  function(y,
            wghts = numeric(0),
            scorr = 0,
            mae = numeric(0),
-           psnr = numeric(0),
            shape = numeric(0),
            varmodel = "Constant",
            vcoef = NULL,
@@ -313,7 +316,7 @@ awsobj <-  function(y,
       dim(y)
     invisible(
       new(
-        "aws",
+        "awssegment",
         .Data = data,
         y = array(y, dy),
         dy = dy,
@@ -325,7 +328,6 @@ awsobj <-  function(y,
         delta = delta,
         theta = array(theta, dy),
         mae = as.numeric(mae),
-        psnr = as.numeric(psnr),
         var = as.numeric(var),
         xmin = as.numeric(xmin),
         xmax = as.numeric(xmax),

@@ -1,6 +1,6 @@
 \name{vpaws}
 \alias{vpaws}
-\alias{vpawscov}
+\alias{vpawscov2}
 %- Also NEED an '\alias' for EACH other topic documented here.
 \title{
 vector valued version of function \code{\link{paws}} with homogeneous covariance structure
@@ -12,14 +12,19 @@ discontinuities at the expense of increased computing time.
 
 }
 \usage{
-vpaws(y, kstar = 16, sigma2 = 1, mask = NULL, scorr = 0, spmin = 0.25,
-      ladjust = 1, wghts = NULL, u = NULL, maxni = FALSE, patchsize = 1)
-vpawscov(y, kstar = 16, invcov = NULL, mask = NULL, scorr = 0, spmin = 0.25,
-      ladjust = 1, wghts = NULL, u = NULL, maxni = FALSE, patchsize = 1)
+vpaws(y, kstar = 16, sigma2 = 1, invcov = NULL, mask = NULL, scorr = 0, spmin = 0.25,
+      ladjust = 1, wghts = NULL, u = NULL, patchsize = 1)
+vpawscov2(y, kstar = 16, invcov = NULL, mask = NULL, scorr = 0, spmin = 0.25,
+      lambda = NULL, ladjust = 1, wghts = NULL, patchsize = 1,
+      data = NULL, verbose = TRUE)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-  \item{y}{\code{y} contains the observed response data. \code{dim(y)} determines the dimensionality and extend of the grid design. First component varies over components of the response vector.
+  \item{y}{\code{y}  can be a full array of vector valued data, or, if \code{mask} is provided,
+   be a matrix with columns corresponding to points/pixel/voxel within the mask. In the first case
+  \code{dim(y)} determines the dimensionality and extend of the grid design, in the second
+  case tis information is obtained from the dimensions of \code{mask}.
+  the first component varies over components of the response vector.
 }
   \item{kstar}{
 maximal number of steps to employ. Determines maximal bandwidth.
@@ -28,7 +33,7 @@ maximal number of steps to employ. Determines maximal bandwidth.
 specifies a homogeneous error variance.
 }
 \item{invcov}{
- array of voxelwise inverse covariance matrixes, first index corresponds to
+ array (or matrix) of voxelwise inverse covariance matrixes, first index corresponds to
  upper diagonal inverse covariance matrix.
 }
   \item{mask}{
@@ -52,17 +57,22 @@ factor to increase the default value of lambda
 a "true" value of the regression function, may be provided to
    report risks at each iteration. This can be used to test the propagation condition with \code{u=0}
 }
-  \item{maxni}{
-If TRUE use \eqn{max_{l<=k}(N_i^{(l)}} instead of \eqn{(N_i^{(k)}} in the definition of the statistical penalty.
-}
   \item{patchsize}{
 positive integer defining the size of patches. Number of grid points within the patch is \code{(2*patchsize+1)^d} with \code{d} denoting the dimensionality of the design.
 }
+  \item{lambda}{explicit value of lambda}
+  \item{data}{optional vector-valued images to be smoothed using the weighting scheme of the last step}
+  \item{verbose}{logical: provide information on progress.}
 }
-\details{see \code{\link{vaws}}. The procedure is supposed to produce superior results if the assumption of a local constant image is violated or if smooothness of discontinuities is desired.
+\details{see \code{\link{vaws}}.
+   Parameter \code{y}
+   The procedure is supposed to produce superior results if the assumption of a
+   local constant image is violated or if smooothness of discontinuities is desired.
+
+   Function \code{vpawscov2} is intended for internal use in package \code{qMRI} only.
 }
-\value{
-returns anobject of class \code{aws} with slots
+\value{ function \code{vpaws} returns
+returns an object of class \code{aws} with slots
                         \item{y = "numeric"}{y}
                         \item{dy = "numeric"}{dim(y)}
                         \item{x = "numeric"}{numeric(0)}
@@ -94,11 +104,16 @@ returns anobject of class \code{aws} with slots
                         \item{varmodel = "character"}{"Constant"}
                         \item{vcoef = "numeric"}{numeric(0)}
                         \item{call = "function"}{the arguments of the call to \code{aws}}
+  If \code{y} contained only information (condensed data) for positions within a mask, then the returned object only contains
+  results for these positions.
 }
-\references{
-Joerg Polzehl, Vladimir Spokoiny,  Adaptive Weights Smoothing with applications to image restoration,  J. R. Stat. Soc. Ser. B Stat. Methodol.  62 ,  (2000)  , pp. 335--354
+\references{J. Polzehl, K. Tabelow (2019). Magnetic Resonance Brain Imaging:
+             Modeling and Data Analysis Using R. Springer, Use R! series. Appendix A.
+             Doi:10.1007/978-3-030-29184-6.
 
-Joerg Polzehl, Vladimir Spokoiny,  Propagation-separation approach for local likelihood estimation,  Probab. Theory Related Fields  135 (3),  (2006)  , pp. 335--362.
+             J. Polzehl, K. Papafitsoros, K. Tabelow. Patch-wise adaptive weights smoothing,
+             Preprint no. 2520, WIAS, Berlin, 2018, DOI 10.20347/WIAS.PREPRINT.2520.
+             (to appear in Journal of Statistical Software).
 }
 \author{
 Joerg Polzehl, \email{polzehl@wias-berlin.de},

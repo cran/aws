@@ -7,9 +7,10 @@ The function implements a modification of the adaptive weights smoothing algorit
 segmentation into three classes. The
 }
 \usage{
-aws.segment(y, level, delta = 0, hmax = NULL, hpre = NULL, varmodel = "Constant",
-            lkern = "Triangle", scorr = 0, ladjust = 1, wghts = NULL, u = NULL,
-            varprop = 0.1, ext = 0, graph = FALSE, demo = FALSE, fov=NULL)
+aws.segment(y, level, delta = 0, hmax = NULL, hpre = NULL, mask =NULL,
+            varmodel = "Constant", lkern = "Triangle", scorr = 0, ladjust = 1,
+            wghts = NULL, u = NULL, varprop = 0.1, ext = 0, graph = FALSE,
+            demo = FALSE, fov=NULL)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -19,6 +20,7 @@ aws.segment(y, level, delta = 0, hmax = NULL, hpre = NULL, varmodel = "Constant"
   \item{hmax}{ \code{hmax} specifies the maximal bandwidth. Defaults to \code{hmax=250, 12, 5} for \code{dd=1, 2, 3}, respectively.}
   \item{hpre}{ Describe \code{hpre} Bandwidth used for an initial nonadaptive estimate. The first estimate
    of variance parameters  is obtained from residuals with respect to this estimate. }
+  \item{mask}{ optional logical mask, same dimensionality as \code{y}}
   \item{varmodel}{Implemented are "Constant", "Linear" and "Quadratic" refering to a polynomial model of degree 0 to 2.}
   \item{lkern}{ character: location kernel, either "Triangle", "Plateau", "Quadratic", "Cubic" or "Gaussian".
   The default "Triangle" is equivalent to using an Epanechnikov kernel, "Quadratic" and  "Cubic" refer to a Bi-weight and Tri-weight
@@ -82,12 +84,14 @@ returns anobject of class \code{aws} with slots
                         \item{call = "function"}{the arguments of the call to \code{aws.gaussian}}
 }
 \note{ This function is still experimental and may be changes considerably in future.}
-\references{
+\references{J. Polzehl, H.U. Voss, K. Tabelow (2010). Structural adaptive segmentation for
+   statistical parametric mapping, NeuroImage, 52, pp. 515--523. DOI:10.1016/j.neuroimage.2010.04.241
+
   Duembgen, L. and Spokoiny, V. (2001). Multiscale testing of qualitative hypoteses. Ann. Stat. 29, 124--152.
 
   Polzehl, J. and Spokoiny, V. (2006). Propagation-Separation Approach for Local
   Likelihood Estimation. Probability Theory and Related Fields. 3 (135)
-  335 - 362.
+  335 - 362. DOI:10.1007/s00440-005-0464-1
 }
 \author{ Joerg Polzehl, \email{polzehl@wias-berlin.de},
 \url{http://www.wias-berlin.de/people/polzehl/}  }

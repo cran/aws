@@ -129,7 +129,7 @@ C
 C   Perform one iteration in local constant three-variate aws (gridded)
 C
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-      subroutine caws(y,fix,n1,n2,n3,hakt,hhom,lambda,theta,bi,bi2,
+      subroutine caws(y,pos,n1,n2,n3,hakt,lambda,theta,bi,bi2,
      1                bi0,ai,model,kern,spmin,lwght,wght)
 C
 C   y        observed values of regression function
@@ -147,15 +147,15 @@ C
 
       external kldist,lkern
       double precision kldist,lkern
-      integer n1,n2,n3,model,kern,fix(*)
+      integer n1,n2,n3,model,kern,pos(*)
       logical aws
       double precision y(*),theta(*),bi(*),bi0(*),ai(*),lambda,wght(2),
-     1       bi2(*),hakt,lwght(*),spmin,spf,hhom(*)
+     1       bi2(*),hakt,lwght(*),spmin,spf
       integer ih1,ih2,ih3,i1,i2,i3,j1,j2,j3,jw1,jw2,jw3,jwind3,jwind2,
      1        iind,jind,jind3,jind2,clw1,clw2,clw3,dlw1,dlw2,dlw3,
-     2        dlw12,n12
+     2        dlw12,n12,iindp,jindp
       double precision thetai,bii,sij,swj,swj2,swj0,swjy,z1,z2,z3,wj,
-     1       hakt2,hmax2,hhomi,hhommax,w1,w2
+     1       hakt2,w1,w2
       hakt2=hakt*hakt
       spf=1.d0/(1.d0-spmin)
       aws=lambda.lt.1d35
@@ -179,7 +179,6 @@ C
       n12=n1*n2
       z2=0.d0
       z3=0.d0
-      hmax2=0.d0
       DO j3=-clw3,clw3
          if(n3.gt.1) THEN
             z3=j3*w2
@@ -203,33 +202,29 @@ C  first stochastic term
                jind=j1+clw1+1+jind2
                z1=j1
                lwght(jind)=lkern(kern,(z1*z1+z2)/hakt2)
-               if(lwght(jind).gt.0.d0) hmax2=max(hmax2,z2+z1*z1)
             END DO
          END DO
       END DO
       call rchkusr()
 C$OMP PARALLEL DEFAULT(NONE)
-C$OMP& SHARED(ai,bi,bi0,bi2,hhom,n1,n2,n3,hakt2,hmax2,theta,
-C$OMP& ih3,lwght,wght,y,fix)
+C$OMP& SHARED(ai,bi,bi0,bi2,n1,n2,n3,hakt2,theta,
+C$OMP& ih3,lwght,wght,y,pos)
 C$OMP& FIRSTPRIVATE(ih1,ih2,lambda,aws,n12,
 C$OMP& model,spmin,spf,dlw1,clw1,dlw2,clw2,dlw3,clw3,dlw12,w1,w2)
-C$OMP& PRIVATE(i1,i2,i3,iind,hhomi,hhommax,thetai,bii,swj,swj2,
+C$OMP& PRIVATE(i1,i2,i3,iind,thetai,bii,swj,swj2,iindp,jindp,
 C$OMP& swj0,swjy,sij,wj,j3,jw3,jind3,z3,jwind3,j2,jw2,jind2,z2,jwind2,
 C$OMP& j1,jw1,jind,z1)
 C$OMP DO SCHEDULE(GUIDED)
       DO iind=1,n1*n2*n3
+         iindp=pos(iind)
+         if(iindp.eq.0) CYCLE
          i1=mod(iind,n1)
          if(i1.eq.0) i1=n1
          i2=mod((iind-i1)/n1+1,n2)
          if(i2.eq.0) i2=n2
          i3=(iind-i1-(i2-1)*n1)/n12+1
-         hhomi=hhom(iind)
-         hhomi=hhomi*hhomi
-         hhommax=hmax2
-         IF (fix(iind).ne.0) CYCLE
-C    nothing to do, final estimate is already fixed by control
-         thetai=theta(iind)
-         bii=bi(iind)/lambda
+         thetai=theta(iindp)
+         bii=bi(iindp)/lambda
 C   scaling of sij outside the loop
          swj=0.d0
          swj2=0.d0
@@ -256,593 +251,29 @@ C  first stochastic term
                   j1=jw1+i1
                   if(j1.lt.1.or.j1.gt.n1) CYCLE
                   jind=j1+jind2
+                  jindp=pos(jind)
+                  if(jindp.eq.0) CYCLE
                   wj=lwght(jw1+clw1+1+jwind2)
                   swj0=swj0+wj
                   z1=jw1
                   z1=z2+z1*z1
-                  IF (aws.and.z1.ge.hhomi) THEN
-                     sij=bii*kldist(model,thetai,theta(jind))
-                     IF (sij.gt.1.d0) THEN
-                        hhommax=min(hhommax,z1)
-                        CYCLE
-                     END IF
+                  IF (aws) THEN
+                     sij=bii*kldist(model,thetai,theta(jindp))
+                     IF (sij.gt.1.d0) CYCLE
                      IF (sij.gt.spmin) THEN
                         wj=wj*(1.d0-spf*(sij-spmin))
-                        hhommax=min(hhommax,z1)
                      END IF
                   END IF
                   swj=swj+wj
                   swj2=swj2+wj*wj
-                  swjy=swjy+wj*y(jind)
+                  swjy=swjy+wj*y(jindp)
                END DO
             END DO
          END DO
-         ai(iind)=swjy
-         bi(iind)=swj
-         bi2(iind)=swj2
-         bi0(iind)=swj0
-         hhom(iind)=sqrt(hhommax)
-      END DO
-C$OMP END DO NOWAIT
-C$OMP END PARALLEL
-C$OMP FLUSH(ai,bi,bi0,bi2,hhom)
-      RETURN
-      END
-CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-C
-C   Perform one iteration in local constant three-variate aws (gridded)
-C
-CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-      subroutine caws6(y,fix,n1,n2,n3,hakt,hhom,lambda,theta,fnc,bi,
-     1                 bi2,bi0,ai,kern,spmin,lwght,wght)
-C
-C   y        observed values of regression function
-C   n1,n2,n3    design dimensions
-C   hakt     actual bandwidth
-C   lambda   lambda or lambda*sigma2 for Gaussian models
-C   theta    estimates from last step   (input)
-C   bi       \sum  Wi   (output)
-C   ai       \sum  Wi Y     (output)
-C   kern     specifies the location kernel
-C   wght     scaling factor for second and third dimension (larger values shrink)
-C
-      implicit none
-
-      external kldist,lkern
-      double precision kldist,lkern
-      integer n1,n2,n3,kern,fix(*)
-      logical aws
-      double precision y(*),theta(*),bi(*),bi0(*),ai(*),lambda,wght(2),
-     1       bi2(*),hakt,lwght(*),spmin,spf,hhom(*),fnc(*)
-      integer ih1,ih2,ih3,i1,i2,i3,j1,j2,j3,jw1,jw2,jw3,jwind3,jwind2,
-     1        iind,jind,jind3,jind2,clw1,clw2,clw3,dlw1,dlw2,dlw3,
-     2        dlw12,n12
-      double precision thetai,bii,sij,swj,swj2,swj0,swjy,z,z1,z2,z3,wj,
-     1       hakt2,hmax2,hhomi,hhommax,w1,w2,fnci
-      hakt2=hakt*hakt
-      spf=1.d0/(1.d0-spmin)
-      ih1=FLOOR(hakt)
-      aws=lambda.lt.1d35
-C
-C   first calculate location weights
-C
-      w1=wght(1)
-      w2=wght(2)
-      ih3=FLOOR(hakt/w2)
-      ih2=FLOOR(hakt/w1)
-      ih1=FLOOR(hakt)
-      if(n3.eq.1) ih3=0
-      if(n2.eq.1) ih2=0
-      clw1=ih1
-      clw2=ih2
-      clw3=ih3
-      dlw1=ih1+clw1+1
-      dlw2=ih2+clw2+1
-      dlw3=ih3+clw3+1
-      dlw12=dlw1*dlw2
-      n12=n1*n2
-      z2=0.d0
-      z3=0.d0
-      hmax2=0.d0
-      DO j3=-clw3,clw3
-         if(n3.gt.1) THEN
-            z3=j3*w2
-            z3=z3*z3
-            ih2=FLOOR(sqrt(hakt2-z3)/w1)
-            jind3=(j3+clw3)*dlw12
-         ELSE
-            jind3=0
-         END IF
-         DO j2=-ih2,ih2
-            if(n2.gt.1) THEN
-               z2=j2*w1
-               z2=z3+z2*z2
-               ih1=FLOOR(sqrt(hakt2-z2))
-               jind2=jind3+(j2+clw2)*dlw1
-            ELSE
-               jind2=0
-            END IF
-            DO j1=-ih1,ih1
-C  first stochastic term
-               jind=j1+clw1+1+jind2
-               z1=j1
-               lwght(jind)=lkern(kern,(z1*z1+z2)/hakt2)
-               if(lwght(jind).gt.0.d0) hmax2=max(hmax2,z2+z1*z1)
-            END DO
-         END DO
-      END DO
-      call rchkusr()
-C$OMP PARALLEL DEFAULT(NONE)
-C$OMP& SHARED(ai,bi,bi0,bi2,hhom,n1,n2,n3,hakt2,hmax2,theta,fnc,
-C$OMP& ih3,lwght,wght,y,fix)
-C$OMP& FIRSTPRIVATE(ih1,ih2,lambda,aws,n12,
-C$OMP& spmin,spf,dlw1,clw1,dlw2,clw2,dlw3,clw3,dlw12,w1,w2)
-C$OMP& PRIVATE(i1,i2,i3,iind,hhomi,hhommax,thetai,bii,swj,swj2,
-C$OMP& swj0,swjy,sij,wj,j3,jw3,jind3,z3,jwind3,j2,jw2,jind2,z2,jwind2,
-C$OMP& j1,jw1,jind,z1,fnci,z)
-C$OMP DO SCHEDULE(GUIDED)
-      DO iind=1,n1*n2*n3
-         i1=mod(iind,n1)
-         if(i1.eq.0) i1=n1
-         i2=mod((iind-i1)/n1+1,n2)
-         if(i2.eq.0) i2=n2
-         i3=(iind-i1-(i2-1)*n1)/n12+1
-         hhomi=hhom(iind)
-         hhomi=hhomi*hhomi
-         hhommax=hmax2
-         IF (fix(iind).ne.0) CYCLE
-C    nothing to do, final estimate is already fixed by control
-         thetai=theta(iind)
-         bii=bi(iind)/lambda
-         fnci=fnc(iind)
-C   scaling of sij outside the loop
-         swj=0.d0
-         swj2=0.d0
-         swj0=0.d0
-         swjy=0.d0
-         DO jw3=-clw3,clw3
-            j3=jw3+i3
-            if(j3.lt.1.or.j3.gt.n3) CYCLE
-            jwind3=(jw3+clw3)*dlw12
-            jind3=(j3-1)*n12
-            z3=jw3*w2
-            z3=z3*z3
-            if(n2.gt.1) ih2=FLOOR(sqrt(hakt2-z3)/w1)
-            DO jw2=-ih2,ih2
-               j2=jw2+i2
-               if(j2.lt.1.or.j2.gt.n2) CYCLE
-               jwind2=jwind3+(jw2+clw2)*dlw1
-               jind2=(j2-1)*n1+jind3
-               z2=jw2*w1
-               z2=z3+z2*z2
-               ih1=FLOOR(sqrt(hakt2-z2))
-               DO jw1=-ih1,ih1
-C  first stochastic term
-                  j1=jw1+i1
-                  if(j1.lt.1.or.j1.gt.n1) CYCLE
-                  jind=j1+jind2
-                  wj=lwght(jw1+clw1+1+jwind2)
-                  swj0=swj0+wj
-                  z1=jw1
-                  z1=z2+z1*z1
-                  IF (aws.and.z1.ge.hhomi) THEN
-                     z=thetai-theta(jind)
-                     sij=bii*z*z/(fnci+fnc(jind))
-                     IF (sij.gt.1.d0) THEN
-                        hhommax=min(hhommax,z1)
-                        CYCLE
-                     END IF
-                     IF (sij.gt.spmin) THEN
-                        wj=wj*(1.d0-spf*(sij-spmin))
-                        hhommax=min(hhommax,z1)
-                     END IF
-                  END IF
-                  swj=swj+wj
-                  swj2=swj2+wj*wj
-                  swjy=swjy+wj*y(jind)
-               END DO
-            END DO
-         END DO
-         ai(iind)=swjy
-         bi(iind)=swj
-         bi2(iind)=swj2
-         bi0(iind)=swj0
-         hhom(iind)=sqrt(hhommax)
-      END DO
-C$OMP END DO NOWAIT
-C$OMP END PARALLEL
-C$OMP FLUSH(ai,bi,bi0,bi2,hhom)
-      RETURN
-      END
-CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-C
-C   Perform one iteration in local constant three-variate aws (gridded)
-C
-CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-      subroutine cawsw(n1,n2,n3,hakt,lambda,theta,bi,
-     1                model,kern,spmin,lwght,wght)
-C   compute weights for all combinations of design points
-C
-C   y        observed values of regression function
-C   n1,n2,n3    design dimensions
-C   hakt     actual bandwidth
-C   lambda   lambda or lambda*sigma2 for Gaussian models
-C   theta    estimates from last step   (input)
-C   bi       \sum  Wi   (output)
-C   ai       \sum  Wi Y     (output)
-C   model    specifies the probablilistic model for the KL-Distance
-C   kern     specifies the location kernel
-C
-      implicit none
-
-      external kldist,lkern
-      double precision kldist,lkern
-      integer n1,n2,n3,model,kern
-      double precision theta(*),bi(*),lambda,
-     1       wght(n1,n2,n3,n1,n2,n3),hakt,lwght(*),spmin,spf
-      integer ih1,ih2,ih3,i1,i2,i3,j1,j2,j3,jw1,jw2,jw3,jwind3,jwind2,
-     1        iind,jind,jind3,jind2,clw1,clw2,clw3,dlw1,dlw2,dlw3,
-     2        dlw12,n12
-      double precision thetai,bii,sij,z1,z2,z3,wj,hakt2,hmax2
-      hakt2=hakt*hakt
-      spf=1.d0/(1.d0-spmin)
-C
-C   first calculate location weights
-C
-      ih3=FLOOR(hakt)
-      ih2=ih3
-      ih1=ih3
-      if(n3.eq.1) ih3=0
-      if(n2.eq.1) ih2=0
-      clw1=ih1
-      clw2=ih2
-      clw3=ih3
-      dlw1=ih1+clw1+1
-      dlw2=ih2+clw2+1
-      dlw3=ih3+clw3+1
-      dlw12=dlw1*dlw2
-      n12=n1*n2
-      z2=0.d0
-      z3=0.d0
-      hmax2=0.d0
-      DO j3=-clw3,clw3
-         if(n3.gt.1) THEN
-            z3=j3
-            z3=z3*z3
-            ih2=FLOOR(sqrt(hakt2-z3))
-            jind3=(j3+clw3)*dlw12
-         ELSE
-            jind3=0
-         END IF
-         DO j2=-ih2,ih2
-            if(n2.gt.1) THEN
-               z2=j2
-               z2=z3+z2*z2
-               ih1=FLOOR(sqrt(hakt2-z2))
-               jind2=jind3+(j2+clw2)*dlw1
-            ELSE
-               jind2=0
-            END IF
-            DO j1=-ih1,ih1
-C  first stochastic term
-               jind=j1+clw1+1+jind2
-               z1=j1
-               lwght(jind)=lkern(kern,(z1*z1+z2)/hakt2)
-               if(lwght(jind).gt.0.d0) hmax2=max(hmax2,z2+z1*z1)
-            END DO
-         END DO
-      END DO
-      call rchkusr()
-C$OMP PARALLEL DEFAULT(NONE)
-C$OMP& SHARED(bi,n1,n2,n3,hakt2,hmax2,theta,
-C$OMP& ih3,lwght,wght)
-C$OMP& FIRSTPRIVATE(ih1,ih2,lambda,n12,
-C$OMP& model,spmin,spf,dlw1,clw1,dlw2,clw2,dlw3,clw3,dlw12)
-C$OMP& PRIVATE(i1,i2,i3,iind,thetai,bii,
-C$OMP& sij,wj,j3,jw3,jind3,z3,jwind3,j2,jw2,jind2,z2,jwind2,
-C$OMP& j1,jw1,jind,z1)
-C$OMP DO SCHEDULE(GUIDED)
-      DO iind=1,n1*n2*n3
-         i1=mod(iind,n1)
-         if(i1.eq.0) i1=n1
-         i2=mod((iind-i1)/n1+1,n2)
-         if(i2.eq.0) i2=n2
-         i3=(iind-i1-(i2-1)*n1)/n12+1
-         thetai=theta(iind)
-         bii=bi(iind)/lambda
-C   scaling of sij outside the loop
-         DO jw3=-clw3,clw3
-            j3=jw3+i3
-            if(j3.lt.1.or.j3.gt.n3) CYCLE
-            jwind3=(jw3+clw3)*dlw12
-            jind3=(j3-1)*n12
-            z3=jw3
-            z3=z3*z3
-            if(n2.gt.1) ih2=FLOOR(sqrt(hakt2-z3))
-            DO jw2=-ih2,ih2
-               j2=jw2+i2
-               if(j2.lt.1.or.j2.gt.n2) CYCLE
-               jwind2=jwind3+(jw2+clw2)*dlw1
-               jind2=(j2-1)*n1+jind3
-               z2=jw2
-               z2=z3+z2*z2
-               ih1=FLOOR(sqrt(hakt2-z2))
-               DO jw1=-ih1,ih1
-C  first stochastic term
-                  j1=jw1+i1
-                  if(j1.lt.1.or.j1.gt.n1) CYCLE
-                  jind=j1+jind2
-                  wj=lwght(jw1+clw1+1+jwind2)
-                  sij=bii*kldist(model,thetai,theta(jind))
-                  IF (sij.gt.1.d0) CYCLE
-                  IF (sij.gt.spmin) THEN
-                     wj=wj*(1.d0-spf*(sij-spmin))
-                  END IF
-                  wght(i1,i2,i3,j1,j2,j3) = wj
-               END DO
-            END DO
-         END DO
-      END DO
-C$OMP END DO NOWAIT
-C$OMP END PARALLEL
-C$OMP FLUSH(wght)
-      RETURN
-      END
-CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-C
-C   Perform one iteration in local constant three-variate aws
-C   for selected points
-C
-CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-      subroutine cawsw1(n1,n2,n3,inx,iny,inz,anz,hakt,lambda,theta,bi,
-     1                model,kern,spmin,lwght,wght)
-C   compute weights for all combinations of design points
-C
-C   y        observed values of regression function
-C   n1,n2,n3    design dimensions
-C   hakt     actual bandwidth
-C   lambda   lambda or lambda*sigma2 for Gaussian models
-C   theta    estimates from last step   (input)
-C   bi       \sum  Wi   (output)
-C   ai       \sum  Wi Y     (output)
-C   model    specifies the probablilistic model for the KL-Distance
-C   kern     specifies the location kernel
-C
-      implicit none
-
-      external kldist,lkern
-      double precision kldist,lkern
-      integer n1,n2,n3,model,kern,anz,inx(anz),iny(anz),inz(anz)
-      double precision theta(*),bi(*),lambda,
-     1       wght(n1,n2,n3,anz),hakt,lwght(*),spmin,spf
-      integer ih1,ih2,ih3,i1,i2,i3,j1,j2,j3,jw1,jw2,jw3,jwind3,jwind2,
-     1        iind,jind,jind3,jind2,clw1,clw2,clw3,dlw1,dlw2,dlw3,
-     2        dlw12,n12
-      double precision thetai,bii,sij,z1,z2,z3,wj,hakt2,hmax2
-      hakt2=hakt*hakt
-      spf=1.d0/(1.d0-spmin)
-C
-C   first calculate location weights
-C
-      ih3=FLOOR(hakt)
-      ih2=ih3
-      ih1=ih3
-      if(n3.eq.1) ih3=0
-      if(n2.eq.1) ih2=0
-      clw1=ih1
-      clw2=ih2
-      clw3=ih3
-      dlw1=ih1+clw1+1
-      dlw2=ih2+clw2+1
-      dlw3=ih3+clw3+1
-      dlw12=dlw1*dlw2
-      n12=n1*n2
-      z2=0.d0
-      z3=0.d0
-      hmax2=0.d0
-      DO j3=-clw3,clw3
-         if(n3.gt.1) THEN
-            z3=j3
-            z3=z3*z3
-            ih2=FLOOR(sqrt(hakt2-z3))
-            jind3=(j3+clw3)*dlw12
-         ELSE
-            jind3=0
-         END IF
-         DO j2=-ih2,ih2
-            if(n2.gt.1) THEN
-               z2=j2
-               z2=z3+z2*z2
-               ih1=FLOOR(sqrt(hakt2-z2))
-               jind2=jind3+(j2+clw2)*dlw1
-            ELSE
-               jind2=0
-            END IF
-            DO j1=-ih1,ih1
-C  first stochastic term
-               jind=j1+clw1+1+jind2
-               z1=j1
-               lwght(jind)=lkern(kern,(z1*z1+z2)/hakt2)
-               if(lwght(jind).gt.0.d0) hmax2=max(hmax2,z2+z1*z1)
-            END DO
-         END DO
-      END DO
-      call rchkusr()
-      DO iind=1,anz
-         i1=inx(iind)
-         i2=iny(iind)
-         i3=inz(iind)
-         thetai=theta(i1+(i2-1)*n1+(i3-1)*n1*n2)
-         bii=bi(iind)/lambda
-C   scaling of sij outside the loop
-         DO jw3=-clw3,clw3
-            j3=jw3+i3
-            if(j3.lt.1.or.j3.gt.n3) CYCLE
-            jwind3=(jw3+clw3)*dlw12
-            jind3=(j3-1)*n12
-            z3=jw3
-            z3=z3*z3
-            if(n2.gt.1) ih2=FLOOR(sqrt(hakt2-z3))
-            DO jw2=-ih2,ih2
-               j2=jw2+i2
-               if(j2.lt.1.or.j2.gt.n2) CYCLE
-               jwind2=jwind3+(jw2+clw2)*dlw1
-               jind2=(j2-1)*n1+jind3
-               z2=jw2
-               z2=z3+z2*z2
-               ih1=FLOOR(sqrt(hakt2-z2))
-               DO jw1=-ih1,ih1
-C  first stochastic term
-                  j1=jw1+i1
-                  if(j1.lt.1.or.j1.gt.n1) CYCLE
-                  jind=j1+jind2
-                  wj=lwght(jw1+clw1+1+jwind2)
-                  sij=bii*kldist(model,thetai,theta(jind))
-                  IF (sij.gt.1.d0) CYCLE
-                  IF (sij.gt.spmin) THEN
-                     wj=wj*(1.d0-spf*(sij-spmin))
-                  END IF
-                  wght(j1,j2,j3,iind) = wj
-               END DO
-            END DO
-         END DO
-      END DO
-      RETURN
-      END
-
-CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-C
-C   Perform one iteration in local constant three-variate aws (gridded)
-C   used in awstestprop only
-C   bi0 contains sum of weights (without invers variances) !!!
-C   no lambda, fix, spmin, hhom, theta
-C
-CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-      subroutine caws1(y,n1,n2,n3,hakt,bi,bi2,
-     1                bi0,ai,kern,lwght,wght)
-C
-C   y        observed values of regression function
-C   n1,n2,n3    design dimensions
-C   hakt     actual bandwidth
-C   bi       \sum  Wi   (output)
-C   ai       \sum  Wi Y     (output)
-C   kern     specifies the location kernel
-C   wght     scaling factor for second and third dimension (larger values shrink)
-C
-      implicit none
-
-      external kldist,lkern
-      double precision kldist,lkern
-      integer n1,n2,n3,kern
-      double precision y(*),bi(*),bi0(*),ai(*),wght(2),
-     1       bi2(*),hakt,lwght(*)
-      integer ih1,ih2,ih3,i1,i2,i3,j1,j2,j3,jw1,jw2,jw3,jwind3,jwind2,
-     1        iind,jind,jind3,jind2,clw1,clw2,clw3,dlw1,dlw2,dlw3,
-     2        dlw12,n12
-      double precision swj,swj2,swj0,swjy,z1,z2,z3,wj,hakt2,hmax2,w1,w2
-      hakt2=hakt*hakt
-      w1=wght(1)
-      w2=wght(2)
-C
-C   first calculate location weights
-C
-      ih3=FLOOR(hakt/w2)
-      ih2=FLOOR(hakt/w1)
-      ih1=FLOOR(hakt)
-      if(n3.eq.1) ih3=0
-      if(n2.eq.1) ih2=0
-      clw1=ih1
-      clw2=ih2
-      clw3=ih3
-      dlw1=ih1+clw1+1
-      dlw2=ih2+clw2+1
-      dlw3=ih3+clw3+1
-      dlw12=dlw1*dlw2
-      n12=n1*n2
-      z2=0.d0
-      z3=0.d0
-      hmax2=0.d0
-      DO j3=-clw3,clw3
-         if(n3.gt.1) THEN
-            z3=j3*w2
-            z3=z3*z3
-            ih2=FLOOR(sqrt(hakt2-z3)/w1)
-            jind3=(j3+clw3)*dlw12
-         ELSE
-            jind3=0
-         END IF
-         DO j2=-ih2,ih2
-            if(n2.gt.1) THEN
-               z2=j2*w1
-               z2=z3+z2*z2
-               ih1=FLOOR(sqrt(hakt2-z2))
-               jind2=jind3+(j2+clw2)*dlw1
-            ELSE
-               jind2=0
-            END IF
-            DO j1=-ih1,ih1
-C  first stochastic term
-               jind=j1+clw1+1+jind2
-               z1=j1
-               lwght(jind)=lkern(kern,(z1*z1+z2)/hakt2)
-               if(lwght(jind).gt.0.d0) hmax2=max(hmax2,z2+z1*z1)
-            END DO
-         END DO
-      END DO
-      call rchkusr()
-C$OMP PARALLEL DEFAULT(NONE)
-C$OMP& SHARED(ai,bi,bi0,bi2,n1,n2,n3,hakt2,hmax2,lwght,wght,y)
-C$OMP& FIRSTPRIVATE(ih1,ih2,dlw1,clw1,dlw2,clw2,dlw3,clw3,w1,w2,
-C$OMP& n12,dlw12)
-C$OMP& PRIVATE(i1,i2,i3,iind,swj,swj2,swj0,swjy,wj,
-C$OMP& j3,jw3,jind3,z3,jwind3,j2,jw2,jind2,z2,jwind2,j1,jw1,jind,z1)
-C$OMP DO SCHEDULE(GUIDED)
-      DO iind=1,n1*n2*n3
-         i1=mod(iind,n1)
-         if(i1.eq.0) i1=n1
-         i2=mod((iind-i1)/n1+1,n2)
-         if(i2.eq.0) i2=n2
-         i3=(iind-i1-(i2-1)*n1)/n1/n2+1
-C    nothing to do, final estimate is already fixed by control
-         swj=0.d0
-         swj2=0.d0
-         swj0=0.d0
-         swjy=0.d0
-         DO jw3=-clw3,clw3
-            j3=jw3+i3
-            if(j3.lt.1.or.j3.gt.n3) CYCLE
-            jwind3=(jw3+clw3)*dlw12
-            jind3=(j3-1)*n12
-            z3=jw3*w2
-            z3=z3*z3
-            if(n2.gt.1) ih2=FLOOR(sqrt(hakt2-z3)/w1)
-            DO jw2=-ih2,ih2
-               j2=jw2+i2
-               if(j2.lt.1.or.j2.gt.n2) CYCLE
-               jwind2=jwind3+(jw2+clw2)*dlw1
-               jind2=(j2-1)*n1+jind3
-               z2=jw2*w1
-               z2=z3+z2*z2
-               ih1=FLOOR(sqrt(hakt2-z2))
-               DO jw1=-ih1,ih1
-C  first stochastic term
-                  j1=jw1+i1
-                  if(j1.lt.1.or.j1.gt.n1) CYCLE
-                  jind=j1+jind2
-                  wj=lwght(jw1+clw1+1+jwind2)
-                  swj0=swj0+wj
-                  z1=jw1
-                  z1=z2+z1*z1
-                  swj=swj+wj
-                  swj2=swj2+wj*wj
-                  swjy=swjy+wj*y(jind)
-               END DO
-            END DO
-         END DO
-         ai(iind)=swjy
-         bi(iind)=swj
-         bi2(iind)=swj2
-         bi0(iind)=swj0
+         ai(iindp)=swjy
+         bi(iindp)=swj
+         bi2(iindp)=swj2
+         bi0(iindp)=swj0
       END DO
 C$OMP END DO NOWAIT
 C$OMP END PARALLEL
@@ -854,8 +285,170 @@ C
 C   Perform one iteration in local constant three-variate aws (gridded)
 C
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-      subroutine chaws(y,fix,si2,n1,n2,n3,hakt,lambda,theta,bi,bi2,
-     1           bi0,vred,ai,model,kern,spmin,lwght,wght)
+      subroutine caws6(y,pos,n1,n2,n3,hakt,lambda,theta,fnc,bi,
+     1                 bi2,bi0,ai,kern,spmin,lwght,wght)
+C
+C  aws for nc-chi differs from caws through arguments model (missing) and fnc (add)
+C
+C   y        observed values of regression function
+C   n1,n2,n3    design dimensions
+C   hakt     actual bandwidth
+C   lambda   lambda or lambda*sigma2 for Gaussian models
+C   theta    estimates from last step   (input)
+C   bi       \sum  Wi   (output)
+C   ai       \sum  Wi Y     (output)
+C   kern     specifies the location kernel
+C   wght     scaling factor for second and third dimension (larger values shrink)
+C
+      implicit none
+
+      external kldist,lkern
+      double precision kldist,lkern
+      integer n1,n2,n3,kern,pos(*)
+      logical aws
+      double precision y(*),theta(*),bi(*),bi0(*),ai(*),lambda,wght(2),
+     1       bi2(*),hakt,lwght(*),spmin,spf,fnc(*)
+      integer ih1,ih2,ih3,i1,i2,i3,j1,j2,j3,jw1,jw2,jw3,jwind3,jwind2,
+     1        iind,jind,jind3,jind2,clw1,clw2,clw3,dlw1,dlw2,dlw3,
+     2        dlw12,n12,iindp,jindp
+      double precision thetai,bii,sij,swj,swj2,swj0,swjy,z,z1,z2,z3,wj,
+     1       hakt2,w1,w2,fnci
+      hakt2=hakt*hakt
+      spf=1.d0/(1.d0-spmin)
+      ih1=FLOOR(hakt)
+      aws=lambda.lt.1d35
+C
+C   first calculate location weights
+C
+      w1=wght(1)
+      w2=wght(2)
+      ih3=FLOOR(hakt/w2)
+      ih2=FLOOR(hakt/w1)
+      ih1=FLOOR(hakt)
+      if(n3.eq.1) ih3=0
+      if(n2.eq.1) ih2=0
+      clw1=ih1
+      clw2=ih2
+      clw3=ih3
+      dlw1=ih1+clw1+1
+      dlw2=ih2+clw2+1
+      dlw3=ih3+clw3+1
+      dlw12=dlw1*dlw2
+      n12=n1*n2
+      z2=0.d0
+      z3=0.d0
+      DO j3=-clw3,clw3
+         if(n3.gt.1) THEN
+            z3=j3*w2
+            z3=z3*z3
+            ih2=FLOOR(sqrt(hakt2-z3)/w1)
+            jind3=(j3+clw3)*dlw12
+         ELSE
+            jind3=0
+         END IF
+         DO j2=-ih2,ih2
+            if(n2.gt.1) THEN
+               z2=j2*w1
+               z2=z3+z2*z2
+               ih1=FLOOR(sqrt(hakt2-z2))
+               jind2=jind3+(j2+clw2)*dlw1
+            ELSE
+               jind2=0
+            END IF
+            DO j1=-ih1,ih1
+C  first stochastic term
+               jind=j1+clw1+1+jind2
+               z1=j1
+               lwght(jind)=lkern(kern,(z1*z1+z2)/hakt2)
+            END DO
+         END DO
+      END DO
+      call rchkusr()
+C$OMP PARALLEL DEFAULT(NONE)
+C$OMP& SHARED(ai,bi,bi0,bi2,n1,n2,n3,hakt2,theta,fnc,
+C$OMP& ih3,lwght,wght,y,pos)
+C$OMP& FIRSTPRIVATE(ih1,ih2,lambda,aws,n12,
+C$OMP& spmin,spf,dlw1,clw1,dlw2,clw2,dlw3,clw3,dlw12,w1,w2)
+C$OMP& PRIVATE(i1,i2,i3,iind,thetai,bii,swj,swj2,
+C$OMP& swj0,swjy,sij,wj,j3,jw3,jind3,z3,jwind3,j2,jw2,jind2,z2,jwind2,
+C$OMP& j1,jw1,jind,z1,fnci,z,iindp,jindp)
+C$OMP DO SCHEDULE(GUIDED)
+      DO iind=1,n1*n2*n3
+         iindp=pos(iind)
+         if(iindp.eq.0) CYCLE
+         i1=mod(iind,n1)
+         if(i1.eq.0) i1=n1
+         i2=mod((iind-i1)/n1+1,n2)
+         if(i2.eq.0) i2=n2
+         i3=(iind-i1-(i2-1)*n1)/n12+1
+         thetai=theta(iindp)
+         bii=bi(iindp)/lambda
+         fnci=fnc(iindp)
+C   scaling of sij outside the loop
+         swj=0.d0
+         swj2=0.d0
+         swj0=0.d0
+         swjy=0.d0
+         DO jw3=-clw3,clw3
+            j3=jw3+i3
+            if(j3.lt.1.or.j3.gt.n3) CYCLE
+            jwind3=(jw3+clw3)*dlw12
+            jind3=(j3-1)*n12
+            z3=jw3*w2
+            z3=z3*z3
+            if(n2.gt.1) ih2=FLOOR(sqrt(hakt2-z3)/w1)
+            DO jw2=-ih2,ih2
+               j2=jw2+i2
+               if(j2.lt.1.or.j2.gt.n2) CYCLE
+               jwind2=jwind3+(jw2+clw2)*dlw1
+               jind2=(j2-1)*n1+jind3
+               z2=jw2*w1
+               z2=z3+z2*z2
+               ih1=FLOOR(sqrt(hakt2-z2))
+               DO jw1=-ih1,ih1
+C  first stochastic term
+                  j1=jw1+i1
+                  if(j1.lt.1.or.j1.gt.n1) CYCLE
+                  jind=j1+jind2
+                  jindp=pos(jind)
+                  if(jindp.eq.0) CYCLE
+                  wj=lwght(jw1+clw1+1+jwind2)
+                  swj0=swj0+wj
+                  z1=jw1
+                  z1=z2+z1*z1
+                  IF (aws) THEN
+                     z=thetai-theta(jindp)
+                     sij=bii*z*z/(fnci+fnc(jindp))
+                     IF (sij.gt.1.d0) CYCLE
+                     IF (sij.gt.spmin) THEN
+                        wj=wj*(1.d0-spf*(sij-spmin))
+                     END IF
+                  END IF
+                  swj=swj+wj
+                  swj2=swj2+wj*wj
+                  swjy=swjy+wj*y(jindp)
+               END DO
+            END DO
+         END DO
+         ai(iindp)=swjy
+         bi(iindp)=swj
+         bi2(iindp)=swj2
+         bi0(iindp)=swj0
+      END DO
+C$OMP END DO NOWAIT
+C$OMP END PARALLEL
+C$OMP FLUSH(ai,bi,bi0,bi2)
+      RETURN
+      END
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+C
+C   Perform one iteration in local constant three-variate aws (gridded)
+C
+CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
+      subroutine chaws(y,si2,pos,n1,n2,n3,hakt,lambda,theta,bi,bi2,
+     1           bi0,ai,model,kern,spmin,lwght,wght)
+C
+C differs from caws by arguments si2 (inverse var)
 C
 C   y        observed values of regression function
 C   n1,n2,n3    design dimensions
@@ -871,13 +464,13 @@ C
       implicit none
       external kldist,lkern
       double precision kldist,lkern
-      integer n1,n2,n3,model,kern,fix(*)
+      integer n1,n2,n3,model,kern,pos(*)
       logical aws
       double precision y(*),theta(*),bi(*),bi0(*),ai(*),lambda,wght(2),
-     1       bi2(*),hakt,lwght(*),si2(*),vred(*),spmin
+     1       bi2(*),hakt,lwght(*),si2(*),spmin
       integer ih1,ih2,ih3,i1,i2,i3,j1,j2,j3,jw1,jw2,jw3,jwind3,jwind2,
      1        iind,jind,jind3,jind2,clw1,clw2,clw3,dlw1,dlw2,dlw3,
-     2        dlw12,n12
+     2        dlw12,n12,iindp,jindp
       double precision thetai,bii,sij,swj,swj2,swj0,swjy,z1,z2,z3,wj,
      1        hakt2,sv1,sv2,spf,w1,w2,wjsi2
       w1=wght(1)
@@ -931,26 +524,26 @@ C  first stochastic term
       END DO
       call rchkusr()
 C$OMP PARALLEL DEFAULT(NONE)
-C$OMP& SHARED(ai,bi,bi0,bi2,si2,vred,n1,n2,n3,hakt2,hakt,theta
-C$OMP& ,lwght,wght,y,fix)
+C$OMP& SHARED(ai,bi,bi0,bi2,si2,n1,n2,n3,hakt2,hakt,theta,
+C$OMP& lwght,wght,y,pos)
 C$OMP& FIRSTPRIVATE(ih1,ih2,lambda,aws,dlw12,n12,
 C$OMP& model,spmin,spf,dlw1,clw1,dlw2,clw2,dlw3,clw3,w1,w2)
-C$OMP& PRIVATE(iind,thetai,bii,swj
-C$OMP& ,swj2,swj0,swjy,sij,sv1,sv2,i1,i2,i3,wj
-C$OMP& ,j3,jw3,jind3,z3,jwind3
-C$OMP& ,j2,jw2,jind2,z2,jwind2
-C$OMP& ,j1,jw1,jind,z1,wjsi2)
+C$OMP& PRIVATE(iind,thetai,bii,swj,iindp,jindp,
+C$OMP& swj2,swj0,swjy,sij,sv1,sv2,i1,i2,i3,wj,
+C$OMP& j3,jw3,jind3,z3,jwind3,
+C$OMP& j2,jw2,jind2,z2,jwind2,
+C$OMP& j1,jw1,jind,z1,wjsi2)
 C$OMP DO SCHEDULE(GUIDED)
       DO iind=1,n1*n2*n3
+         iindp=pos(iind)
+         if(iindp.eq.0) CYCLE
          i1=mod(iind,n1)
          if(i1.eq.0) i1=n1
          i2=mod((iind-i1)/n1+1,n2)
          if(i2.eq.0) i2=n2
          i3=(iind-i1-(i2-1)*n1)/n1/n2+1
-         IF (fix(iind).ne.0) CYCLE
-C    nothing to do, final estimate is already fixed by control
-         thetai=theta(iind)
-         bii=bi(iind)/lambda
+         thetai=theta(iindp)
+         bii=bi(iindp)/lambda
 C   scaling of sij outside the loop
          swj=0.d0
          swj2=0.d0
@@ -979,169 +572,32 @@ C  first stochastic term
                   j1=jw1+i1
                   if(j1.lt.1.or.j1.gt.n1) CYCLE
                   jind=j1+jind2
+                  jindp=pos(jind)
+                  if(jindp.eq.0) CYCLE
                   wj=lwght(jw1+clw1+1+jwind2)
-                  swj0=swj0+wj*si2(jind)
+                  swj0=swj0+wj*si2(jindp)
                   IF (aws) THEN
-                     sij=bii*kldist(model,thetai,theta(jind))
+                     sij=bii*kldist(model,thetai,theta(jindp))
                      IF (sij.gt.1.d0) CYCLE
                      IF (sij.gt.spmin) wj=wj*(1.d0-spf*(sij-spmin))
                   END IF
                   sv1=sv1+wj
                   sv2=sv2+wj*wj
-                  wjsi2=wj*si2(jind)
+                  wjsi2=wj*si2(jindp)
                   swj=swj+wjsi2
                   swj2=swj2+wj*wjsi2
-                  swjy=swjy+wjsi2*y(jind)
+                  swjy=swjy+wjsi2*y(jindp)
                END DO
             END DO
          END DO
-         ai(iind)=swjy
-         bi(iind)=swj
-         bi2(iind)=swj2
-         bi0(iind)=swj0
-         vred(iind)=sv2/sv1/sv1
+         ai(iindp)=swjy
+         bi(iindp)=swj
+         bi2(iindp)=swj2
+         bi0(iindp)=swj0
       END DO
 C$OMP END DO NOWAIT
 C$OMP END PARALLEL
-C$OMP FLUSH(ai,bi,bi0,bi2,vred)
-      RETURN
-      END
-CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-C
-C   Perform one iteration in local constant non-adaptive three-variate aws (gridded)
-C   used in awstestprop only
-C   bi0 contains sum of weights (without invers variances) !!!
-C   no lambda, fix, spmin
-CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-      subroutine chaws1(y,si2,n1,n2,n3,hakt,bi,bi2,
-     1           bi0,vred,ai,kern,lwght,wght)
-C
-C   y        observed values of regression function
-C   n1,n2,n3    design dimensions
-C   hakt     actual bandwidth
-C   lambda   lambda or lambda*sigma2 for Gaussian models
-C   bi       \sum  Wi   (output)
-C   ai       \sum  Wi Y     (output)
-C   kern     specifies the location kernel
-C   wght     scaling factor for second and third dimension (larger values shrink)
-C
-      implicit none
-      external lkern
-      double precision lkern
-      integer n1,n2,n3,kern
-      double precision y(*),bi(*),bi0(*),ai(*),wght(2),
-     1       bi2(*),hakt,lwght(*),si2(*),vred(*)
-      integer ih1,ih2,ih3,i1,i2,i3,j1,j2,j3,jw1,jw2,jw3,jwind3,jwind2,
-     1        iind,jind,jind3,jind2,clw1,clw2,clw3,dlw1,dlw2,dlw3,
-     2        dlw12,n12
-      double precision swj,swj2,swjy,z1,z2,z3,wj,hakt2,sv1,sv2,w1,w2
-      hakt2=hakt*hakt
-      w1=wght(1)
-      w2=wght(2)
-C
-C   first calculate location weights
-C
-      ih3=FLOOR(hakt/w2)
-      ih2=FLOOR(hakt/w1)
-      ih1=FLOOR(hakt)
-      if(n3.eq.1) ih3=0
-      if(n2.eq.1) ih2=0
-      clw1=ih1
-      clw2=ih2
-      clw3=ih3
-      dlw1=ih1+clw1+1
-      dlw2=ih2+clw2+1
-      dlw3=ih3+clw3+1
-      dlw12=dlw1*dlw2
-      n12=n1*n2
-      z2=0.d0
-      z3=0.d0
-      DO j3=-clw3,clw3
-         if(n3.gt.1) THEN
-            z3=j3*w2
-            z3=z3*z3
-            ih2=FLOOR(sqrt(hakt2-z3)/w1)
-            jind3=(j3+clw3)*dlw12
-         ELSE
-            jind3=0
-         END IF
-         DO j2=-ih2,ih2
-            if(n2.gt.1) THEN
-               z2=j2*w1
-               z2=z3+z2*z2
-               ih1=FLOOR(sqrt(hakt2-z2))
-               jind2=jind3+(j2+clw2)*dlw1
-            ELSE
-               jind2=0
-            END IF
-            DO j1=-ih1,ih1
-C  first stochastic term
-               jind=j1+clw1+1+jind2
-               z1=j1
-               lwght(jind)=lkern(kern,(z1*z1+z2)/hakt2)
-             END DO
-         END DO
-      END DO
-      call rchkusr()
-C$OMP PARALLEL DEFAULT(NONE)
-C$OMP& SHARED(ai,bi,bi0,bi2,si2,vred,n1,n2,n3,hakt2,hakt
-C$OMP& ,lwght,wght,y)
-C$OMP& FIRSTPRIVATE(ih1,ih2,dlw1,clw1,dlw2,clw2,dlw3,clw3,w1,w2,
-C$OMP& dlw12,n12)
-C$OMP& PRIVATE(iind,swj,swj2,swjy,sv1,sv2,i1,i2,i3,wj
-C$OMP& ,j3,jw3,jind3,z3,jwind3,j2,jw2,jind2,z2,jwind2
-C$OMP& ,j1,jw1,jind,z1)
-C$OMP DO SCHEDULE(GUIDED)
-      DO iind=1,n1*n2*n3
-         i1=mod(iind,n1)
-         if(i1.eq.0) i1=n1
-         i2=mod((iind-i1)/n1+1,n2)
-         if(i2.eq.0) i2=n2
-         i3=(iind-i1-(i2-1)*n1)/n1/n2+1
-         swj=0.d0
-         swj2=0.d0
-         swjy=0.d0
-         sv1=0.d0
-         sv2=0.d0
-         DO jw3=-clw3,clw3
-            j3=jw3+i3
-            if(j3.lt.1.or.j3.gt.n3) CYCLE
-            jind3=(j3-1)*n12
-            z3=jw3*w2
-            z3=z3*z3
-            if(n2.gt.1) ih2=FLOOR(sqrt(hakt2-z3)/w1)
-            jwind3=(jw3+clw3)*dlw12
-            DO jw2=-ih2,ih2
-               j2=jw2+i2
-               if(j2.lt.1.or.j2.gt.n2) CYCLE
-               jind2=(j2-1)*n1+jind3
-               z2=jw2*w1
-               z2=z3+z2*z2
-               ih1=FLOOR(sqrt(hakt2-z2))
-               jwind2=jwind3+(jw2+clw2)*dlw1
-               DO jw1=-ih1,ih1
-C  first stochastic term
-                  j1=jw1+i1
-                  if(j1.lt.1.or.j1.gt.n1) CYCLE
-                  jind=j1+jind2
-                  wj=lwght(jw1+clw1+1+jwind2)
-                  sv1=sv1+wj
-                  sv2=sv2+wj*wj
-                  swj=swj+wj*si2(jind)
-                  swj2=swj2+wj*wj*si2(jind)
-                  swjy=swjy+wj*si2(jind)*y(jind)
-               END DO
-            END DO
-         END DO
-         ai(iind)=swjy
-         bi(iind)=swj
-         bi2(iind)=swj2
-         bi0(iind)=sv1
-         vred(iind)=sv2/sv1/sv1
-      END DO
-C$OMP END DO NOWAIT
-C$OMP END PARALLEL
-C$OMP FLUSH(ai,bi,bi0,bi2,vred)
+C$OMP FLUSH(ai,bi,bi0,bi2)
       RETURN
       END
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
@@ -1149,8 +605,8 @@ C
 C   Perform one iteration in local constant three-variate aws (gridded) with variance - mean model
 C
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-      subroutine cgaws(y,fix,mask,si2,n1,n2,n3,hakt,hhom,lambda,
-     1        theta,bi,bi2,bi0,gi,vred,ai,kern,spmin,lwght,wght)
+      subroutine cgaws(y,pos,si2,n1,n2,n3,hakt,lambda,
+     1        theta,bi,bi2,bi0,gi,gi2,ai,kern,spmin,lwght,wght)
 C
 C   y        observed values of regression function
 C   n1,n2,n3    design dimensions
@@ -1166,15 +622,15 @@ C
       implicit none
       external lkern
       double precision lkern
-      integer n1,n2,n3,kern,fix(*),mask(*)
+      integer n1,n2,n3,kern,pos(*)
       logical aws
       double precision y(*),theta(*),bi(*),bi0(*),ai(*),lambda,wght(2),
-     1       bi2(*),hakt,lwght(*),si2(*),vred(*),spmin,hhom(*),gi(*)
+     1       bi2(*),hakt,lwght(*),si2(*),gi2(*),spmin,gi(*)
       integer ih1,ih2,ih3,i1,i2,i3,j1,j2,j3,jw1,jw2,jw3,jwind3,jwind2,
      1        iind,jind,jind3,jind2,clw1,clw2,clw3,dlw1,dlw2,dlw3,
-     2        dlw12,n12
+     2        dlw12,n12,iindp,jindp
       double precision thetai,bii,sij,swj,swj2,swj0,swjy,z1,z2,z3,wj,
-     1        hakt2,sv1,sv2,spf,z,hhomi,hhommax,hmax2,w1,w2
+     1        hakt2,sv1,sv2,spf,z,w1,w2
       hakt2=hakt*hakt
       spf=1.d0/(1.d0-spmin)
       w1=wght(1)
@@ -1198,7 +654,6 @@ C
       n12=n1*n2
       z2=0.d0
       z3=0.d0
-      hmax2=0.d0
       DO j3=-clw3,clw3
          if(n3.gt.1) THEN
             z3=j3*w2
@@ -1222,35 +677,31 @@ C  first stochastic term
                jind=j1+clw1+1+jind2
                z1=j1
                lwght(jind)=lkern(kern,(z1*z1+z2)/hakt2)
-               if(lwght(jind).gt.0.d0) hmax2=max(hmax2,z2+z1*z1)
             END DO
          END DO
       END DO
       call rchkusr()
 C$OMP PARALLEL DEFAULT(NONE)
-C$OMP& SHARED(ai,bi,bi0,bi2,si2,hhom,n1,n2,n3,hakt2,hmax2,theta
-C$OMP& ,lwght,wght,y,fix,mask,vred,gi)
+C$OMP& SHARED(ai,bi,bi0,bi2,si2,n1,n2,n3,hakt2,theta,
+C$OMP& lwght,wght,y,pos,gi2,gi)
 C$OMP& FIRSTPRIVATE(ih1,ih2,lambda,aws,n12,dlw12,
 C$OMP& spmin,spf,dlw1,clw1,dlw2,clw2,dlw3,clw3,w1,w2)
-C$OMP& PRIVATE(iind,hhomi,hhommax,thetai,bii,swj
-C$OMP& ,swj2,swj0,swjy,sij,sv1,sv2,i1,i2,i3,wj
-C$OMP& ,j3,jw3,jind3,z3,jwind3
-C$OMP& ,j2,jw2,jind2,z2,jwind2
-C$OMP& ,j1,jw1,jind,z1,z)
+C$OMP& PRIVATE(iind,thetai,bii,swj,iindp,jindp,
+C$OMP& swj2,swj0,swjy,sij,sv1,sv2,i1,i2,i3,wj,
+C$OMP& j3,jw3,jind3,z3,jwind3,
+C$OMP& j2,jw2,jind2,z2,jwind2,
+C$OMP& j1,jw1,jind,z1,z)
 C$OMP DO SCHEDULE(GUIDED)
       DO iind=1,n1*n2*n3
+         iindp=pos(iind)
+         if(iindp.eq.0) CYCLE
          i1=mod(iind,n1)
          if(i1.eq.0) i1=n1
          i2=mod((iind-i1)/n1+1,n2)
          if(i2.eq.0) i2=n2
          i3=(iind-i1-(i2-1)*n1)/n1/n2+1
-         hhomi=hhom(iind)
-         hhomi=hhomi*hhomi
-         hhommax=hmax2
-         IF (fix(iind).ne.0.or.mask(iind).eq.0) CYCLE
-C    nothing to do, final estimate is already fixed by control
-         thetai=theta(iind)
-         bii=bi(iind)/lambda
+         thetai=theta(iindp)
+         bii=bi(iindp)/lambda
 C   scaling of sij outside the loop
          swj=0.d0
          swj2=0.d0
@@ -1279,45 +730,41 @@ C  first stochastic term
                   j1=jw1+i1
                   if(j1.lt.1.or.j1.gt.n1) CYCLE
                   jind=j1+jind2
-                  if(mask(jind).eq.0) CYCLE
+                  jindp=pos(jind)
+                  if(jindp.eq.0) CYCLE
                   wj=lwght(jw1+clw1+1+jwind2)
-                  swj0=swj0+wj*si2(jind)
+                  swj0=swj0+wj*si2(jindp)
                   z1=-jw1
                   z1=z2+z1*z1
-                  IF (aws.and.z1.ge.hhomi) THEN
+                  IF (aws) THEN
 C
 C      gaussian case only
 C
-                     z=(thetai-theta(jind))
+                     z=(thetai-theta(jindp))
                      sij=bii*z*z
-                     IF (sij.gt.1.d0) THEN
-                        hhommax=min(hhommax,z1)
-                        CYCLE
-                     END IF
+                     IF (sij.gt.1.d0) CYCLE
                      IF (sij.gt.spmin) THEN
                         wj=wj*(1.d0-spf*(sij-spmin))
-                        hhommax=min(hhommax,z1)
                      END IF
                   END IF
                   sv1=sv1+wj
                   sv2=sv2+wj*wj
-                  swj=swj+wj*si2(jind)
-                  swj2=swj2+wj*wj*si2(jind)
-                  swjy=swjy+wj*si2(jind)*y(jind)
+                  swj=swj+wj*si2(jindp)
+                  swj2=swj2+wj*wj*si2(jindp)
+                  swjy=swjy+wj*si2(jindp)*y(jindp)
                END DO
             END DO
          END DO
-         ai(iind)=swjy
-         bi(iind)=swj
-         bi2(iind)=swj2
-         bi0(iind)=swj0
-         hhom(iind)=sqrt(hhommax)
-         gi(iind)=sv1
-         vred(iind)=sv2/sv1/sv1
+         ai(iindp)=swjy
+         bi(iindp)=swj
+         bi2(iindp)=swj2
+         bi0(iindp)=swj0
+         gi(iindp)=sv1
+         gi2(iindp)=sv2
       END DO
 C$OMP END DO NOWAIT
 C$OMP END PARALLEL
-C$OMP FLUSH(ai,bi,bi0,bi2,hhom,gi,vred)
+C$OMP FLUSH(ai,bi,bi0,bi2,gi,gi2)
       RETURN
       END
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
@@ -1325,7 +772,7 @@ C
 C   Perform one iteration in local constant three-variate aws (gridded)
 C
 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC
-      subroutine vaws(y,mask,nv,n1,n2,n3,hakt,lambda,theta,bi,vred,
+      subroutine vaws(y,pos,nv,n1,n2,n3,hakt,lambda,theta,bi,vred,
      1                thnew,ncores,spmin,lwght,wght,swjy)
 C
 C   y        observed values of regression function
@@ -1339,14 +786,14 @@ C   wght     scaling factor for second and third dimension (larger values shrink
 C
       implicit none
 
-      integer nv,n1,n2,n3,ncores,mask(*)
+      integer nv,n1,n2,n3,ncores,pos(*)
       logical aws
       double precision y(nv,*),theta(nv,*),bi(*),thnew(nv,*),lambda,
      1  wght(2),hakt,lwght(*),spmin,spf,swjy(nv,ncores),vred(*)
       integer ih1,ih2,ih3,i1,i2,i3,j1,j2,j3,jw1,jw2,jw3,jwind3,jwind2,
      1        iind,jind,jind3,jind2,clw1,clw2,clw3,dlw1,dlw2,dlw3,
-     2        dlw12,n12,k,thrednr
-      double precision bii,biinv,sij,swj,z,z1,z2,z3,wj,hakt2,hmax2,
+     2        dlw12,n12,k,thrednr,iindp,jindp
+      double precision bii,biinv,sij,swj,z,z1,z2,z3,wj,hakt2,
      1        w1,w2,spmb,swj2
       external lkern
       double precision lkern
@@ -1378,7 +825,6 @@ C
       n12=n1*n2
       z2=0.d0
       z3=0.d0
-      hmax2=0.d0
       DO j3=-clw3,clw3
          if(n3.gt.1) THEN
             z3=j3*w2
@@ -1402,22 +848,22 @@ C  first stochastic term
                jind=j1+clw1+1+jind2
                z1=j1
                lwght(jind)=lkern(2,(z1*z1+z2)/hakt2)
-               if(lwght(jind).gt.0.d0) hmax2=max(hmax2,z2+z1*z1)
             END DO
          END DO
       END DO
       call rchkusr()
 C$OMP PARALLEL DEFAULT(NONE)
-C$OMP& SHARED(thnew,bi,vred,nv,n1,n2,n3,hakt2,hmax2,theta,
-C$OMP& ih3,lwght,wght,y,swjy,mask)
+C$OMP& SHARED(thnew,bi,vred,nv,n1,n2,n3,hakt2,theta,
+C$OMP& ih3,lwght,wght,y,swjy,pos)
 C$OMP& FIRSTPRIVATE(ih1,ih2,lambda,aws,n12,
 C$OMP& spmin,spf,dlw1,clw1,dlw2,clw2,dlw3,clw3,dlw12,w1,w2)
 C$OMP& PRIVATE(i1,i2,i3,iind,bii,biinv,swj,spmb,swj2,
 C$OMP& sij,wj,j3,jw3,jind3,z3,jwind3,j2,jw2,jind2,z2,jwind2,
-C$OMP& j1,jw1,jind,z1,z,thrednr)
+C$OMP& j1,jw1,jind,z1,z,thrednr,iindp,jindp)
 C$OMP DO SCHEDULE(GUIDED)
       DO iind=1,n1*n2*n3
-         if(mask(iind).eq.0) CYCLE
+         iindp=pos(iind)
+         if(iindp.eq.0) CYCLE
 !$         thrednr = omp_get_thread_num()+1
 C returns value in 0:(ncores-1)
          i1=mod(iind,n1)
@@ -1425,8 +871,7 @@ C returns value in 0:(ncores-1)
          i2=mod((iind-i1)/n1+1,n2)
          if(i2.eq.0) i2=n2
          i3=(iind-i1-(i2-1)*n1)/n12+1
-C    nothing to do, final estimate is already fixed by control
-         bii=bi(iind)/lambda
+         bii=bi(iindp)/lambda
          biinv=1.d0/bii
          spmb=spmin/bii
 C   scaling of sij outside the loop
@@ -1456,12 +901,13 @@ C  first stochastic term
                   j1=jw1+i1
                   if(j1.lt.1.or.j1.gt.n1) CYCLE
                   jind=j1+jind2
-                  if(mask(jind).eq.0) CYCLE
+                  jindp=pos(jind)
+                  if(jindp.eq.0) CYCLE
                   wj=lwght(jw1+clw1+1+jwind2)
                   IF (aws) THEN
                      sij=0.d0
                      DO k=1,nv
-                        z=theta(k,iind)-theta(k,jind)
+                        z=theta(k,iindp)-theta(k,jindp)
                         sij=sij+z*z
                         IF(sij.ge.biinv) CYCLE
                      END DO
@@ -1471,23 +917,23 @@ C  first stochastic term
                   swj=swj+wj
                   swj2=swj2+wj*wj
                   DO k=1,nv
-                     swjy(k,thrednr)=swjy(k,thrednr)+wj*y(k,jind)
+                     swjy(k,thrednr)=swjy(k,thrednr)+wj*y(k,jindp)
                   END DO
                END DO
             END DO
          END DO
          DO k=1,nv
-            thnew(k,iind)=swjy(k,thrednr)/swj
+            thnew(k,iindp)=swjy(k,thrednr)/swj
          END DO
-         bi(iind)=swj
-         vred(iind)=swj2/swj/swj
+         bi(iindp)=swj
+         vred(iindp)=swj2/swj/swj
       END DO
 C$OMP END DO NOWAIT
 C$OMP END PARALLEL
 C$OMP FLUSH(thnew,bi)
       RETURN
       END
-      subroutine vaws2(y,mask,nv,nvd,n1,n2,n3,hakt,lambda,theta,bi,
+      subroutine vaws2cov(y,pos,nv,nvd,n1,n2,n3,hakt,lambda,theta,bi,
      1                vred,thnew,invcov,ncores,spmin,lwght,wght,swjy,
      2                thi,invcovi)
 C
@@ -1502,15 +948,15 @@ C   wght     scaling factor for second and third dimension (larger values shrink
 C
       implicit none
 
-      integer nv,n1,n2,n3,ncores,nvd,mask(*)
+      integer nv,n1,n2,n3,ncores,nvd,pos(*)
       logical aws
       double precision y(nv,*),theta(nv,*),bi(*),thnew(nv,*),lambda,
      1  wght(2),hakt,lwght(*),spmin,spf,swjy(nv,ncores),invcov(nvd,*),
      2  vred(*)
       integer ih1,ih2,ih3,i1,i2,i3,j1,j2,j3,jw1,jw2,jw3,jwind3,jwind2,
      1        iind,jind,jind3,jind2,clw1,clw2,clw3,dlw1,dlw2,dlw3,
-     2        dlw12,n12,k,thrednr
-      double precision bii,biinv,sij,swj,z,z1,z2,z3,wj,hakt2,hmax2,
+     2        dlw12,n12,k,thrednr,iindp,jindp
+      double precision bii,biinv,sij,swj,z,z1,z2,z3,wj,hakt2,
      1        w1,w2,spmb,swj2
       integer l,m
       double precision thi(nv,*),invcovi(nvd,*)
@@ -1544,7 +990,6 @@ C
       n12=n1*n2
       z2=0.d0
       z3=0.d0
-      hmax2=0.d0
       DO j3=-clw3,clw3
          if(n3.gt.1) THEN
             z3=j3*w2
@@ -1568,23 +1013,23 @@ C  first stochastic term
                jind=j1+clw1+1+jind2
                z1=j1
                lwght(jind)=lkern(2,(z1*z1+z2)/hakt2)
-               if(lwght(jind).gt.0.d0) hmax2=max(hmax2,z2+z1*z1)
             END DO
          END DO
       END DO
       call rchkusr()
 C$OMP PARALLEL DEFAULT(NONE)
-C$OMP& SHARED(thnew,bi,nv,nvd,n1,n2,n3,hakt2,hmax2,theta,invcov,
-C$OMP& ih3,lwght,wght,y,swjy,mask,thi,
+C$OMP& SHARED(thnew,bi,nv,nvd,n1,n2,n3,hakt2,theta,invcov,
+C$OMP& ih3,lwght,wght,y,swjy,pos,thi,
 C$OMP& invcovi,vred)
 C$OMP& FIRSTPRIVATE(ih1,ih2,lambda,aws,n12,
 C$OMP& spmin,spf,dlw1,clw1,dlw2,clw2,dlw3,clw3,dlw12,w1,w2)
 C$OMP& PRIVATE(i1,i2,i3,iind,bii,biinv,swj,swj2,spmb,
 C$OMP& sij,wj,j3,jw3,jind3,z3,jwind3,j2,jw2,jind2,z2,jwind2,
-C$OMP& j1,jw1,jind,z1,z,thrednr,l,m)
+C$OMP& j1,jw1,jind,z1,z,thrednr,l,m,iindp,jindp)
 C$OMP DO SCHEDULE(GUIDED)
       DO iind=1,n1*n2*n3
-         if(mask(iind).eq.0) CYCLE
+         iindp=pos(iind)
+         if(iindp.eq.0) CYCLE
 !$         thrednr = omp_get_thread_num()+1
 C returns value in 0:(ncores-1)
          i1=mod(iind,n1)
@@ -1593,12 +1038,12 @@ C returns value in 0:(ncores-1)
          if(i2.eq.0) i2=n2
          i3=(iind-i1-(i2-1)*n1)/n12+1
          DO k=1,nv
-            thi(k,thrednr)=theta(k,iind)
+            thi(k,thrednr)=theta(k,iindp)
          END DO
          DO k=1,nvd
-            invcovi(k,thrednr)=invcov(k,iind)
+            invcovi(k,thrednr)=invcov(k,iindp)
          END DO
-         bii=bi(iind)/lambda
+         bii=bi(iindp)/lambda
 C   scaling of sij outside the loop
          swj=0.d0
          swj2=0.d0
@@ -1626,10 +1071,11 @@ C  first stochastic term
                   j1=jw1+i1
                   if(j1.lt.1.or.j1.gt.n1) CYCLE
                   jind=j1+jind2
-                  if(mask(jind).eq.0) CYCLE
+                  jindp=pos(iindp)
+                  if(jindp.eq.0) CYCLE
                   wj=lwght(jw1+clw1+1+jwind2)
                   IF (aws) THEN
-                     sij=bii*KLdistsi(thi(1,thrednr),theta(1,jind),
+                     sij=bii*KLdistsi(thi(1,thrednr),theta(1,jindp),
      1                   invcovi(1,thrednr),nv)
                      IF (sij.ge.1.d0) CYCLE
                      IF (sij.gt.spmin) wj=wj*(1.d0-spf*(sij-spmin))
@@ -1637,16 +1083,16 @@ C  first stochastic term
                   swj=swj+wj
                   swj2=swj2+wj*wj
                   DO k=1,nv
-                     swjy(k,thrednr)=swjy(k,thrednr)+wj*y(k,jind)
+                     swjy(k,thrednr)=swjy(k,thrednr)+wj*y(k,jindp)
                   END DO
                END DO
             END DO
          END DO
          DO k=1,nv
-            thnew(k,iind)=swjy(k,thrednr)/swj
+            thnew(k,iindp)=swjy(k,thrednr)/swj
          END DO
-         bi(iind)=swj
-         vred(iind)=swj2/swj/swj
+         bi(iindp)=swj
+         vred(iindp)=swj2/swj/swj
       END DO
 C$OMP END DO NOWAIT
 C$OMP END PARALLEL
