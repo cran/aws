@@ -126,7 +126,7 @@ if(family == "NCchi"){
   minth <- min(th)
   z <- z[z>min(z)]
   nz <- nls(z~(a*th+b*th*th+c*th*th*th+d)/(a*th+b*th*th+c*th*th*th+1+d),data=list(th=th,z=z),start=list(a=1,b=1,c=1,d=1))
-  vpar <- c(minth,minz,coef(nz))
+  vpar <- c(minth,minz,coefficients(nz))
   ##  this provides an excellent approximation for the variance reduction in case of low ncp
 }
 
@@ -588,7 +588,7 @@ estGlobalSigma <- function(y, mask=NULL, ncoils=1, steps=16, vext=c(1,1),
                           as.integer(ddim[2]),
                           as.integer(ddim[3]),
                           as.integer(mask),
-                          as.double(h),
+                          as.double(hinit),
                           as.double(vext),
                           sigma = double(n))$sigma
         sigma <- sigma/2/(ncoils-gamma(ncoils+.5)^2/gamma(ncoils)^2)
@@ -601,7 +601,7 @@ estGlobalSigma <- function(y, mask=NULL, ncoils=1, steps=16, vext=c(1,1),
                           as.integer(ddim[2]),
                           as.integer(ddim[3]),
                           as.integer(mask),
-                          as.double(h),
+                          as.double(hinit),
                           as.double(vext),
                           sigma = double(n))$sigma
         sigma <- array( afactor*sigma, ddim)
