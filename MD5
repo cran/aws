@@ -1,5 +1,5 @@
-46481a1e05f60684d20c746f63a65fc3 *DESCRIPTION
-ce83e6abd52ab7f1a2649b8250a815c7 *NAMESPACE
+69cb6f98d49162cb535358acf8a1dc28 *DESCRIPTION
+f4bf70b15c8c544146cfbd910c7f5f65 *NAMESPACE
 fabb102785cf75738ae8423324fc115a *R/Classes.r
 6f0fc4545028b81276e2da9558716ae6 *R/ICIsmooth.r
 162f7325044a62aa71eb2b5411b138fd *R/TGVTV.r
@@ -22,8 +22,8 @@ b282b04c8b23057df8ab23109504d3b8 *R/smse3misc.R
 b405a0d06bc97040ac67fb1b3b7f0e7e *R/vaws.r
 0666cd4150afa4d405fc165fc1d41cc2 *R/vpaws.r
 aedae2c17d9dfceeee4d28d3fa67d054 *README
-1cb4dc6c99eab406a144276a3ba5aa08 *build/partial.rdb
-8e2a6f297e5f2259608203b8131078cd *build/vignette.rds
+058a52619e7a3ca618a5a50860e462f7 *build/partial.rdb
+9ec62b784682a87890fbcc73b47c343e *build/vignette.rds
 3323a58981b36d74583a3c65ab657cc0 *demo/00Index
 1523a5dc754a36ecb466d60c8ac29e64 *demo/aws_ex1.r
 b235d578bec04e7d6f3e769b6a2dd09e *demo/aws_ex2.r
@@ -40,7 +40,7 @@ a7a0307679af8d8aa31cc4300ca9d4d0 *demo/paws_ex2.r
 6fe0bcdb3e1913327b36dd4df17d6632 *inst/CITATION
 4fee5cefd8ee5f2654fe852c218a3ea8 *inst/doc/aws-Example.R
 99d7876f250bd0563568632b27542df1 *inst/doc/aws-Example.Rnw
-e462ae3a9a3b6a6b7d6e076bc665e967 *inst/doc/aws-Example.pdf
+67c15f0a017bfc58bb47a22adc865712 *inst/doc/aws-Example.pdf
 ce25168cddf5065a6a45be8a1b9e18dd *inst/scripts/adjust.r
 086801bcb3ea9c5a00f743ebf4907c1b *man/ICIcombined.Rd
 85f9d7ed322cc97049edebf201dc26ae *man/ICIsmooth-class.Rd
@@ -78,7 +78,7 @@ b5de111156117a5c10f61ccba9d35539 *man/vaws.Rd
 ac64c0c4d3605dd31f2dd988e1ce4e20 *src/ICIsmooth.f
 680c646e3ffd555f7ee0b146d2156e36 *src/Makevars
 d7802e3ac133dfff83d04f425d23d764 *src/Rentries.c
-313f88b3e5e4e00f8fb683258440a839 *src/awslp.f
+6936639ab899b6540cc70f029a5296c0 *src/awslp.f
 800c39c5b10d6624fdd56c5d3599282f *src/awswghts.f
 b2e2dccbb859b0d6b7e6a0fa60771c8d *src/caws.f
 7c14a3cf497d50837b4af078f816aafc *src/cawsmask.f
