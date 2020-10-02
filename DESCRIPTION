@@ -1,6 +1,6 @@
 Package: aws
-Version: 2.4-3
-Date: 2020-07-20
+Version: 2.5
+Date: 2020-10-01
 Title: Adaptive Weights Smoothing
 Authors@R: c(person("Joerg","Polzehl",role=c("aut","cre"),email="joerg.polzehl@wias-berlin.de"),person("Felix","Anker",role=c("ctb")))
 Author: Joerg Polzehl [aut, cre],
@@ -10,14 +10,12 @@ Depends: R (>= 3.4.0), awsMethods (>= 1.1-1)
 Imports: methods, gsl
 Description: We provide a collection of R-functions implementing
     adaptive smoothing procedures in 1D, 2D and 3D. This includes the
-    Propagation-Separation Approach to adaptive smoothing as
-    described in "J. Polzehl and V. Spokoiny (2006)
-    <DOI:10.1007/s00440-005-0464-1>",
-   "J. Polzehl and V. Spokoiny (2004) <DOI:10.20347/WIAS.PREPRINT.998>"
-   and "J. Polzehl, K. Papafitsoros, K. Tabelow (2018) <DOI:10.20347/WIAS.PREPRINT.2520>",
+    Propagation-Separation Approach to adaptive smoothing,
    the Intersecting Confidence Intervals (ICI), variational approaches and a non-local means filter.
-   Usage of the package is also described in
-   Polzehl and Tabelow (2019),
+   The package is described in detail in Polzehl J, Papafitsoros K, Tabelow K (2020). 
+   Patch-Wise Adaptive Weights Smoothing in R. Journal of Statistical Software, 95(6), 1-27. 
+   <doi:10.18637/jss.v095.i06>,
+    Usage of the package in MR imaging is illustrated in Polzehl and Tabelow (2019),
    Magnetic Resonance Brain Imaging, Appendix A, Springer, Use R! Series.
    <doi:10.1007/978-3-030-29184-6_6>.
 License: GPL (>= 2)
@@ -26,6 +24,6 @@ Copyright: This package is Copyright (C) 2005-2020 Weierstrass
 URL: http://www.wias-berlin.de/people/polzehl/
 RoxygenNote: 5.0.1
 NeedsCompilation: yes
-Packaged: 2020-07-20 14:49:33 UTC; polzehl
+Packaged: 2020-10-01 12:55:42 UTC; polzehl
 Repository: CRAN
-Date/Publication: 2020-07-21 09:50:07 UTC
+Date/Publication: 2020-10-02 04:22:14 UTC
