@@ -1,4 +1,4 @@
-e6cb775ab440143b94b169d690adcb52 *DESCRIPTION
+04b545c4c7147b3e4142c9db2d2b742a *DESCRIPTION
 2c3d303fe1827848a77ac7133c458633 *NAMESPACE
 fabb102785cf75738ae8423324fc115a *R/Classes.r
 6f0fc4545028b81276e2da9558716ae6 *R/ICIsmooth.r
@@ -22,8 +22,8 @@ b282b04c8b23057df8ab23109504d3b8 *R/smse3misc.R
 488ea89ead8a8500b6ec46391fb997a9 *R/vaws.r
 00abd2e9ecffdaeeac8bc0552cd72168 *R/vpaws.r
 aedae2c17d9dfceeee4d28d3fa67d054 *README
-85fd25c958639e126912804242c39b13 *build/partial.rdb
-8e2a6f297e5f2259608203b8131078cd *build/vignette.rds
+4915b0c67138d0d8588666bb7f4626db *build/partial.rdb
+ed7fd2258f4a019d822f6acc06fe953d *build/vignette.rds
 3323a58981b36d74583a3c65ab657cc0 *demo/00Index
 1523a5dc754a36ecb466d60c8ac29e64 *demo/aws_ex1.r
 b235d578bec04e7d6f3e769b6a2dd09e *demo/aws_ex2.r
@@ -39,8 +39,8 @@ fc2e1bde97627112b7d751ac2957ea17 *demo/irreg_ex1.r
 a7a0307679af8d8aa31cc4300ca9d4d0 *demo/paws_ex2.r
 8f66bfdede42856bf8aaf8117918001a *inst/CITATION
 4fee5cefd8ee5f2654fe852c218a3ea8 *inst/doc/aws-Example.R
-99d7876f250bd0563568632b27542df1 *inst/doc/aws-Example.Rnw
-af61e665049549b2c638d466f8e21c3f *inst/doc/aws-Example.pdf
+94f0f8cf1baf9e51b312f6bbee0fa6ef *inst/doc/aws-Example.Rnw
+6827803f3cb331f2248fce16c7989862 *inst/doc/aws-Example.pdf
 ce25168cddf5065a6a45be8a1b9e18dd *inst/scripts/adjust.r
 9514008bddb44c1ecf1fa08fcc84d490 *man/ICIcombined.Rd
 85f9d7ed322cc97049edebf201dc26ae *man/ICIsmooth-class.Rd
@@ -76,7 +76,7 @@ e94e5a1efd2ce42f7d3eaebe3a449c2c *man/risk-methods.Rd
 b5de111156117a5c10f61ccba9d35539 *man/vaws.Rd
 5358d4dc0f02238cf1b3a63e06ae9947 *man/vpaws.Rd
 ac64c0c4d3605dd31f2dd988e1ce4e20 *src/ICIsmooth.f
-680c646e3ffd555f7ee0b146d2156e36 *src/Makevars
+c528d99dfae071d29846bc438ada22d2 *src/Makevars
 d7802e3ac133dfff83d04f425d23d764 *src/Rentries.c
 6936639ab899b6540cc70f029a5296c0 *src/awslp.f
 800c39c5b10d6624fdd56c5d3599282f *src/awswghts.f
@@ -92,4 +92,4 @@ c4d2847631ad96920fedee007b9fc164 *src/segment.f
 930812cfa7edf5db7cab3526d931c7fe *src/smooth3d.f
 691aafd7158f7be86be98022d733d20a *src/smse3.f
 3398464afb7ca7afdabdd402b3b8fbb5 *src/varest.f
-99d7876f250bd0563568632b27542df1 *vignettes/aws-Example.Rnw
+94f0f8cf1baf9e51b312f6bbee0fa6ef *vignettes/aws-Example.Rnw
