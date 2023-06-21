@@ -119,7 +119,7 @@ returns anobject of class \code{aws} with slots
              Doi:10.1007/978-3-030-29184-6.
 
              J. Polzehl, K. Papafitsoros, K. Tabelow (2020). Patch-Wise Adaptive Weights Smoothing in R, Journal of
-             Statistical Software, 95(6), 1-27. doi:10.18637/jss.v095.i06 (URL: http://doi.org/10.18637/jss.v095.i06).
+             Statistical Software, 95(6), 1-27. doi:10.18637/jss.v095.i06.
 
              J. Polzehl, V. Spokoiny,  Adaptive Weights Smoothing with applications to image restoration,
 						 J. R. Stat. Soc. Ser. B Stat. Methodol.  62 ,  (2000)  , pp. 335--354. DOI:10.1111/1467-9868.00235.
@@ -128,7 +128,7 @@ returns anobject of class \code{aws} with slots
 						 Probab. Theory Related Fields  135 (3),  (2006)  , pp. 335--362. DOI:10.1007/s00440-005-0464-1.
 }
 \author{ Joerg Polzehl, \email{polzehl@wias-berlin.de},
-\url{http://www.wias-berlin.de/people/polzehl/}}
+\url{https://www.wias-berlin.de/people/polzehl/}}
 \note{
 use \code{setCores='number of threads'} to enable parallel execution.
 }

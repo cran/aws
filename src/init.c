@@ -122,9 +122,6 @@ void F77_NAME(ihaws2)(double* y, double* si2, int* pos, int* wlse, int* n1,
   int* n2, int* n3, int* dv, double* hakt, double* lambda, double* theta,
 	int* ncores, double* bi, double* thn, int* kern, int* skern, double* spmin,
 	double* spmax, double* lwght, double* wght, double* swjy);
-void F77_NAME(ipolsp)( double* theta, double* th0, double* ni, double* ni0,
-  int* n, int* ng, int* gind, double* gw, int* nbv, int* nbvp1, double* msth,
-  double* msni);
 void F77_NAME(imcorr)(double* res, int* mask, int* n1, int* n2, int* n3, int* nv,
 	double* scorr, int* l1, int* l2, int* l3);
 void F77_NAME(ipolsp1)( double* theta, double* th0, double* ni, double* ni0,
@@ -171,6 +168,7 @@ void F77_NAME(pvawsme)(double* y, double* yd, int* pos, int* nv, int* nvd, int* 
   int* n3, double* hakt, double* lambda, double* theta, double* bi, double* bin,
   double* thnew, double* ydnew, double* invcov, int* ncores, double* spmin, double* lwght,
   double* wght, double* swjy, double* swjd, int* np1, int* np2, int* np3);
+void F77_NAME(qselect)(double* x, int* n, int* k);
 void F77_NAME(sector)(double* x1, int* n1, double* x2, int* n2,
   int* nsect, int* sect, int* symm, double* insect);
 void F77_NAME(segment)(double* y, int* pos, int* fix, double* level,
@@ -300,8 +298,6 @@ static R_NativePrimitiveArgType ihaws2_t[]={REALSXP, REALSXP, INTSXP, INTSXP,
 	REALSXP, INTSXP, INTSXP, REALSXP, REALSXP, REALSXP, REALSXP, REALSXP};
 static R_NativePrimitiveArgType imcorr_t[]={REALSXP, INTSXP, INTSXP, INTSXP,
 	INTSXP, INTSXP, REALSXP, INTSXP, INTSXP, INTSXP};
-static R_NativePrimitiveArgType ipolsp_t[]={REALSXP, REALSXP, REALSXP,
-  REALSXP, INTSXP, INTSXP, INTSXP, REALSXP, INTSXP, INTSXP, REALSXP, REALSXP};
 static R_NativePrimitiveArgType ipolsp1_t[]={REALSXP, REALSXP, REALSXP,
   REALSXP, INTSXP, INTSXP, INTSXP, REALSXP, INTSXP, INTSXP, REALSXP,
   REALSXP};
@@ -344,6 +340,7 @@ static R_NativePrimitiveArgType pvawsme_t[]={REALSXP, REALSXP, INTSXP, INTSXP,
   INTSXP, INTSXP, INTSXP, INTSXP, INTSXP, REALSXP, REALSXP, REALSXP, REALSXP,
   REALSXP, REALSXP, REALSXP, REALSXP, INTSXP, REALSXP, REALSXP, REALSXP,
   REALSXP, REALSXP, INTSXP, INTSXP, INTSXP};
+static R_NativePrimitiveArgType qselect_t[]={REALSXP, INTSXP, INTSXP};
 static R_NativePrimitiveArgType sector_t[]={REALSXP, INTSXP, REALSXP, INTSXP,
   INTSXP, INTSXP, INTSXP, REALSXP};
 static R_NativePrimitiveArgType segment_t[]={REALSXP, INTSXP, INTSXP, REALSXP, REALSXP,
@@ -411,7 +408,6 @@ static const R_FortranMethodDef fmethods[] = {
 						{"hg1f1", (DL_FUNC) &hg1f1_ , 5, hg1f1_t},
 						{"ihaws2", (DL_FUNC) &ihaws2_ ,21, ihaws2_t},
 						{"imcorr", (DL_FUNC) &imcorr_ ,10, imcorr_t},
-						{"ipolsp", (DL_FUNC) &ipolsp_ , 12, ipolsp_t},
             {"ipolsp1", (DL_FUNC) &ipolsp1_ , 12, ipolsp1_t},
 						{"ivar", (DL_FUNC) &ivar_ ,5, ivar_t},
             {"k456krb", (DL_FUNC) &k456krb_ , 4, k456krb_t},
@@ -431,6 +427,7 @@ static const R_FortranMethodDef fmethods[] = {
             {"pvaws", (DL_FUNC) &pvaws_ ,20, pvaws_t},
             {"pvaws2", (DL_FUNC) &pvaws2_ ,22, pvaws2_t},
             {"pvawsme", (DL_FUNC) &pvawsme_ , 26, pvawsme_t},
+            {"qselect", (DL_FUNC) &qselect_ ,3, qselect_t},
             {"sector", (DL_FUNC) &sector_ ,8, sector_t},
             {"segment", (DL_FUNC) &segment_ ,29, segment_t},
 						{"smooth3d", (DL_FUNC) &smooth3d_ ,16, smooth3d_t},
