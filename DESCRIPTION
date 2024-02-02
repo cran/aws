@@ -1,6 +1,6 @@
 Package: aws
-Version: 2.5-3
-Date: 2023-06-21
+Version: 2.5-4
+Date: 2024-02-02
 Title: Adaptive Weights Smoothing
 Authors@R: c(person("Joerg","Polzehl",role=c("aut","cre"),email="joerg.polzehl@wias-berlin.de"),person("Felix","Anker",role=c("ctb")))
 Author: Joerg Polzehl [aut, cre],
@@ -24,6 +24,6 @@ Copyright: This package is Copyright (C) 2005-2023 Weierstrass
 URL: https://www.wias-berlin.de/people/polzehl/
 RoxygenNote: 5.0.1
 NeedsCompilation: yes
-Packaged: 2023-06-21 21:43:43 UTC; polzehl
+Packaged: 2024-02-02 17:50:00 UTC; polzehl
 Repository: CRAN
-Date/Publication: 2023-06-21 23:10:02 UTC
+Date/Publication: 2024-02-02 19:30:02 UTC
