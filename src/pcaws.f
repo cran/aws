@@ -245,8 +245,6 @@ C
       integer ip1,ip2,ip3,nph1,nph2,nph3,ipind,jp1,jp2,jp3,jpind
       external lkern
       double precision lkern
-C!$      integer omp_get_thread_num
-C!$      external omp_get_thread_num
       thrednr = 1
 C just to prevent a compiler warning
       hakt2=hakt*hakt
@@ -437,8 +435,6 @@ C
       integer ip1,ip2,ip3,nph1,nph2,nph3,ipind,jp1,jp2,jp3,jpind
       external lkern, KLdistsi
       double precision lkern, KLdistsi
-C!$      integer omp_get_thread_num
-C!$      external omp_get_thread_num
       thrednr = 1
 C just to prevent a compiler warning
       hakt2=hakt*hakt
@@ -629,8 +625,6 @@ C
       integer ip1,ip2,ip3,nph1,nph2,nph3,ipind,jp1,jp2,jp3,jpind
       external lkern, KLdistsr
       double precision lkern, KLdistsr
-C!$      integer omp_get_thread_num
-C!$      external omp_get_thread_num
       thrednr = 1
 C just to prevent a compiler warning
       hakt2=hakt*hakt

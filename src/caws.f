@@ -798,8 +798,6 @@ C
      1        w1,w2,spmb,swj2
       external lkern
       double precision lkern
-C!$      integer omp_get_thread_num
-C!$      external omp_get_thread_num
       thrednr = 1
 C just to prevent a compiler warning
       hakt2=hakt*hakt
@@ -962,8 +960,6 @@ C
       double precision thi(nv,*),invcovi(nvd,*)
       external lkern, KLdistsi
       double precision lkern, KLdistsi
-C!$      integer omp_get_thread_num
-C!$      external omp_get_thread_num
       thrednr = 1
 C just to prevent a compiler warning
       hakt2=hakt*hakt

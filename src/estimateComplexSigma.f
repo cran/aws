@@ -34,8 +34,6 @@ C
      1       w1,w2,spmb,spf
       external lkern,KLdist2
       double precision lkern,KLdist2
-C!$      integer omp_get_thread_num
-C!$      external omp_get_thread_num
       thrednr = 1
 C just to prevent a compiler warning
       hakt2=hakt*hakt

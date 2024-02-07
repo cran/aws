@@ -75,8 +75,6 @@ C
       integer i1,i2,i3,j1,j2,j3,j,k,thrednr
       double precision fmedian
       external fmedian
-C!$      integer omp_get_thread_num
-C!$      external omp_get_thread_num
       thrednr = 1
 C$OMP PARALLEL DEFAULT(SHARED)
 C$OMP& PRIVATE(i1,i2,i3,j1,j2,j3,j,k,thrednr)
@@ -150,8 +148,6 @@ C
       integer i1,i2,i3,j1,j2,j3,i,j,jj,n,maxit,thrednr
       double precision z,sw,sws,sws2,sj,thi,wj,kval,fnsi,sgi,tol,low,up,
      1       fmin,sgi2,vz,thi2,thj2,fnsj,thj,nii
-C!$      integer omp_get_thread_num
-C!$      external omp_get_thread_num
       n = n1*n2*n3
       thrednr = 1
       tol=1d-5
@@ -281,8 +277,6 @@ C
      1 th(n1,n2,n3),sigman(n1*n2*n3),lambda,w(nw),sigma(n1,n2,n3),minni
       integer i1,i2,i3,j1,j2,j3,i,j,n,thrednr
       double precision z,sw,sws,sws2,sj,thi,wj,kval,sgi
-C!$      integer omp_get_thread_num
-C!$      external omp_get_thread_num
       n = n1*n2*n3
       thrednr = 1
 C  precompute values of lgamma(corrected df/2) in each voxel
@@ -451,8 +445,6 @@ C
      2       sigma,wad(nw,nthreds)
       integer i1,i2,i3,j1,j2,j3,i,j,n,thrednr
       double precision z,sw,sw2,swy,swy2,yj,thi,wj,kval,cw,fnsi
-C!$      integer omp_get_thread_num
-C!$      external omp_get_thread_num
       n = n1*n2*n3
       thrednr = 1
 C  precompute values of lgamma(corrected df/2) in each voxel
