@@ -129,7 +129,6 @@ awstestprop <- function(dy,
   zobj <- zobj0 <- list(ai = y, bi = rep(1, n))
   bi <- rep(1, n)
   yhat <- y / shape
-  hhom <- rep(1, n)
   lambda0 <- 1e50
   total <- cumsum(1.25 ^ (1:kstar)) / sum(1.25 ^ (1:kstar))
   #
@@ -145,7 +144,7 @@ awstestprop <- function(dy,
   kldistnorm1 <- function(th1, y, df) {
     L <- df / 2
     m1 <-
-      sqrt(pi / 2) * gamma(L + 1 / 2) / gamma(1.5) / gamma(L) * hyperg_1F1(-0.5, L, -th1 ^
+      sqrt(pi / 2) * gamma(L + 1 / 2) / gamma(1.5) / gamma(L) * gsl::hyperg_1F1(-0.5, L, -th1 ^
                                                                              2 / 2, give = FALSE, strict = TRUE)
     (m1 - y) ^ 2 / 2 / (2 * L + th1 ^ 2 - m1 ^ 2)
   }
@@ -188,38 +187,46 @@ awstestprop <- function(dy,
     #   get nonadaptive estimate
     #
     if (!homogeneous & family == "Gaussian") {
-      zobj0 <- .Fortran(C_chaws1,
+      zobj0 <- .Fortran(C_chaws,
         as.double(y),
         as.double(sigma2),
+        as.integer(1:n),#position
         as.integer(n1),
         as.integer(n2),
         as.integer(n3),
         hakt = as.double(hakt),
+        as.double(1e40),
+        double(n),
         bi = double(n),
+        bi2 = double(n),
         double(n),
-        double(n),
-        double(n),
-        #vred
         ai = double(n),
+        as.integer(cpar$mcode),
         as.integer(lkern),
+        as.double(spmin),
         double(prod(dlw)),
         as.double(wghts)
-      )[c("bi", "ai", "hakt")]
+      )[c("bi", "bi2", "ai", "hakt")]
     } else {
-      zobj0 <- .Fortran(C_caws1,
+      zobj0 <- .Fortran(C_caws,
         as.double(y),
+        as.integer(1:n),# position for full mask
         as.integer(n1),
         as.integer(n2),
         as.integer(n3),
         hakt = as.double(hakt),
-        bi = double(n),
+        as.double(1e40),
         double(n),
+        bi = double(n),
+        bi2 = double(n),
         double(n),
         ai = double(n),
+        as.integer(cpar$mcode),
         as.integer(lkern),
+        as.double(spmin),
         double(prod(dlw)),
         as.double(wghts)
-      )[c("bi", "ai", "hakt")]
+      )[c("bi", "bi2", "ai", "hakt")]
     }
     if (family %in% c("Bernoulli", "Poisson"))
       zobj0 <- regularize(zobj0, family)
@@ -262,8 +269,8 @@ awstestprop <- function(dy,
     if (!homogeneous & family == "Gaussian") {
       zobj <- .Fortran(C_chaws,
         as.double(y),
-        as.logical(rep(FALSE, n)),
         as.double(sigma2),
+        as.integer(1:n),# position for full mask
         as.integer(n1),
         as.integer(n2),
         as.integer(n3),
@@ -273,8 +280,6 @@ awstestprop <- function(dy,
         bi = as.double(bi),
         bi2 = double(n),
         double(n),
-        double(n),
-        #vred
         ai = double(n),
         as.integer(cpar$mcode),
         as.integer(lkern),
@@ -286,12 +291,11 @@ awstestprop <- function(dy,
       if (cpar$mcode != 6) {
         zobj <- .Fortran(C_caws,
           as.double(y),
-          as.logical(rep(FALSE, n)),
+          as.integer(1:n),# position for full mask
           as.integer(n1),
           as.integer(n2),
           as.integer(n3),
           hakt = as.double(hakt),
-          hhom = as.double(hhom),
           as.double(lambda0),
           as.double(yhat),
           bi = as.double(bi),
@@ -307,12 +311,11 @@ awstestprop <- function(dy,
       } else {
         zobj <- .Fortran(C_caws6,
           as.double(y),
-          as.logical(rep(FALSE, n)),
+          as.integer(1:n),# position for full mask
           as.integer(n1),
           as.integer(n2),
           as.integer(n3),
           hakt = as.double(hakt),
-          hhom = as.double(hhom),
           as.double(lambda0),
           as.double(yhat),
           as.double(fncchiv(yhat, varstats) / 2),
@@ -573,7 +576,6 @@ pawstestprop <- function(dy,
   zobj <- zobj0 <- list(ai = y, bi = rep(1, n))
   bi <- rep(1, n)
   yhat <- y / shape
-  hhom <- rep(1, n)
   lambda0 <- 1e50
   total <- cumsum(1.25 ^ (1:kstar)) / sum(1.25 ^ (1:kstar))
   #
@@ -589,7 +591,7 @@ pawstestprop <- function(dy,
   kldistnorm1 <- function(th1, y, df) {
     L <- df / 2
     m1 <-
-      sqrt(pi / 2) * gamma(L + 1 / 2) / gamma(1.5) / gamma(L) * hyperg_1F1(-0.5, L, -th1 ^
+      sqrt(pi / 2) * gamma(L + 1 / 2) / gamma(1.5) / gamma(L) * gsl::hyperg_1F1(-0.5, L, -th1 ^
                                                                              2 / 2, give = FALSE, strict = TRUE)
     (m1 - y) ^ 2 / 2 / (2 * L + th1 ^ 2 - m1 ^ 2)
   }
@@ -659,20 +661,25 @@ pawstestprop <- function(dy,
     #
     #   get nonadaptive estimate
     #
-      zobj0 <- .Fortran(C_caws1,
-        as.double(y),
-        as.integer(n1),
-        as.integer(n2),
-        as.integer(n3),
-        hakt = as.double(hakt),
-        bi = double(n),
-        double(n),
-        double(n),
-        ai = double(n),
-        as.integer(lkern),
-        double(prod(dlw)),
-        as.double(wghts)
-      )[c("bi", "ai", "hakt")]
+    zobj0 <- .Fortran(C_caws,
+      as.double(y),
+      as.integer(1:n),# position for full mask
+      as.integer(n1),
+      as.integer(n2),
+      as.integer(n3),
+      hakt = as.double(hakt),
+      as.double(1e40),
+      double(n),
+      bi = double(n),
+      bi2 = double(n),
+      double(n),
+      ai = double(n),
+      as.integer(cpar$mcode),
+      as.integer(lkern),
+      as.double(spmin),
+      double(prod(dlw)),
+      as.double(wghts)
+    )[c("bi", "bi2", "ai", "hakt")]
     if (family %in% c("Bernoulli", "Poisson"))
       zobj0 <- regularize(zobj0, family)
     yhat0 <- zobj0$ai / zobj0$bi
@@ -707,7 +714,7 @@ pawstestprop <- function(dy,
       as.double(z / ni),
       as.integer(nz),
       exprob = double(nz),
-      as.logical(mask)
+      as.integer(mask)
     )$exprob
     #
     #   get adaptive estimate
@@ -715,6 +722,7 @@ pawstestprop <- function(dy,
 
         zobj <- .Fortran(C_pcaws,
           as.double(y),
+          as.double(1:n),# full mask
           as.integer(n1),
           as.integer(n2),
           as.integer(n3),
@@ -723,19 +731,17 @@ pawstestprop <- function(dy,
           as.double(yhat),
           as.double(zobj$bi),
           bi2 = double(n),
-          bi0 = double(n),
           bi = double(n), #biout
-          ai = as.double(zobj$ai),
+          theta = double(n),
           as.integer(cpar$mcode),
           as.integer(lkern),
           as.double(spmin),
           double(prod(dlw)),
           as.double(wghts),
-          as.integer(patchsize))[c("bi", "bi0", "bi2", "ai", "hakt")]
+          as.integer(patchsize))[c("bi", "bi2", "theta", "hakt")]
     if (family %in% c("Bernoulli", "Poisson"))
       zobj <- regularize(zobj, family)
-    dim(zobj$ai) <- dy
-    yhat <- zobj$ai / zobj$bi
+    yhat <- zobj$theta
     dim(yhat) <- dy
     if (varadapt)
       bi <- bi ^ 2 / zobj$bi2
@@ -766,7 +772,7 @@ pawstestprop <- function(dy,
       as.double(z / ni),
       as.integer(nz),
       exprob = double(nz),
-      as.logical(mask)
+      as.integer(mask)
     )$exprob
 
     contour(
@@ -841,121 +847,4 @@ pawstestprop <- function(dy,
     levels = levels,
     family = family
   )
-}
-
-awsweights <- function(awsobj, spmin = 0.25, inx = NULL) {
-  if (awsobj@degree != 0 || awsobj@varmodel != "Constant" ||
-      any(awsobj@scorr != 0))
-    stop("Adjustment for correlations is not implemented")
-  ##  if is.null(inx)  the complete weight configuration will be
-  ##  computed. This may be huge and exceed memory
-  ##
-  ##
-  dy <- awsobj@dy
-  n1 <- dy[1]
-  ldy <- length(dy)
-  if (is.null(ldy))
-    ldy <- 1
-  if (ldy > 1)
-    n2 <- dy[2]
-  else
-    n2 <- 1
-  if (ldy == 3)
-    n3 <- dy[3]
-  else
-    n3 <- 1
-  n <- n1 * n2 * n3
-  hakt <- awsobj@hmax * 1.25 ^ (1 / ldy)
-  ## bandwidth for an additional step of aws
-  lambda0 <- awsobj@lambda
-  ## this reflects lambda*sigma^2 from aws
-  yhat <- awsobj@theta
-  bi <- awsobj@ni
-  mcode <- switch(
-    awsobj@family,
-    Gaussian = 1,
-    Bernoulli = 2,
-    Poisson = 3,
-    Exponential = 4,
-    Volatility = 4,
-    Variance = 5
-  )
-  lkern <- awsobj@lkern
-  hakt <- rep(hakt, ldy)
-  dlw <- (2 * trunc(hakt) + 1)
-  if (!is.null(inx)) {
-    dinx <- dim(inx)
-    if (is.null(dinx) & n2 == 1) {
-      ## distinguish between univariate problems and multiple points of interest
-      ## and 2D/3D problems with single point of interest
-      dinx <- c(1, length(inx))
-      dim(inx) <- dinx
-    }
-    if (is.null(dinx)) {
-      anzx <- 1
-      linx <- length(inx)
-      ix <- inx[1]
-      iy <- if (linx > 1)
-        inx[2]
-      else
-        1
-      iz <- if (linx > 2)
-        inx[3]
-      else
-        1
-    } else {
-      linx <- dinx[1]
-      anzx <- dinx[2]
-      ix <- inx[1,]
-      iy <- if (linx > 1)
-        inx[2,]
-      else
-        rep(1, anzx)
-      iz <- if (linx > 2)
-        inx[3,]
-      else
-        rep(1, anzx)
-    }
-    zobj <- .Fortran(C_cawsw1,
-      as.integer(n1),
-      as.integer(n2),
-      as.integer(n3),
-      as.integer(ix),
-      as.integer(iy),
-      as.integer(iz),
-      as.integer(anzx),
-      hakt = as.double(hakt),
-      as.double(lambda0),
-      as.double(yhat),
-      bi = as.double(bi),
-      as.integer(mcode),
-      as.integer(lkern),
-      as.double(spmin),
-      double(prod(dlw)),
-      wghts = double(n * anzx)
-    )$wghts
-    dim(zobj) <- if (anzx == 1)
-      dy
-    else
-      c(dy, anzx)
-  } else{
-    if (n > 128 ^ 2)
-      stop("Weight scheme would use more than 2 GB memory, please specify locations in inx ")
-    zobj <- .Fortran(C_cawsw,
-      as.integer(n1),
-      as.integer(n2),
-      as.integer(n3),
-      hakt = as.double(hakt),
-      as.double(lambda0),
-      as.double(yhat),
-      bi = as.double(bi),
-      as.integer(mcode),
-      as.integer(lkern),
-      as.double(spmin),
-      double(prod(dlw)),
-      wghts = double(n * n)
-    )$wghts
-    dim(zobj) <- c(dy, dy)
-  }
-  zobj
 }

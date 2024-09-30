@@ -96,14 +96,19 @@ returns anobject of class \code{aws} with slots
                         \item{call = "function"}{the arguments of the call to \code{aws}}
 
 }
-\references{
-Joerg Polzehl, Vladimir Spokoiny,  Adaptive Weights Smoothing with applications to image restoration,  J. R. Stat. Soc. Ser. B Stat. Methodol.  62 ,  (2000)  , pp. 335--354
+\references{J. Polzehl, K. Tabelow (2019). Magnetic Resonance Brain Imaging:
+             Modeling and Data Analysis Using R. Springer, Use R! series. Appendix A.
+             Doi:10.1007/978-3-030-29184-6.
 
-Joerg Polzehl, Vladimir Spokoiny,  Propagation-separation approach for local likelihood estimation,  Probab. Theory Related Fields  135 (3),  (2006)  , pp. 335--362.
+J. Polzehl, V. Spokoiny,  Adaptive Weights Smoothing with applications to image restoration,
+J. R. Stat. Soc. Ser. B Stat. Methodol.  62 ,  (2000)  , pp. 335--354. DOI:10.1111/1467-9868.00235.
+
+J. Polzehl, V. Spokoiny,  Propagation-separation approach for local likelihood estimation,
+Probab. Theory Related Fields  135 (3),  (2006)  , pp. 335--362. DOI:10.1007/s00440-005-0464-1.
 }
 \author{
 Joerg Polzehl, \email{polzehl@wias-berlin.de},
-\url{http://www.wias-berlin.de/people/polzehl/}
+\url{https://www.wias-berlin.de/people/polzehl/}
 }
 \note{
 use \code{setCores='number of threads'} to enable parallel execution.
@@ -111,7 +116,7 @@ use \code{setCores='number of threads'} to enable parallel execution.
 
 %% ~Make other sections like Warning with \section{Warning }{....} ~
 
-\seealso{See also \code{\link{aws}}, \code{\link{vpaws}}, \code{\link{vpawscov}},\code{link{awsdata}}
+\seealso{See also \code{\link{aws}}, \code{\link{vpaws}},\code{link{awsdata}}
 }
 \examples{\dontrun{
 setCores(2)

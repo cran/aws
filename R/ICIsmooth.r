@@ -162,7 +162,7 @@ kernsm <- function (y,
               as.integer(xp$dx1[2]),
               as.integer(nsector),
               as.integer(sector),
-              as.logical(symmetric),
+              as.integer(symmetric),
               insector = double(xp$dx1[1] * xp$dx1[2])
             )$insector
             kwghts <- kwghts * array(sector, xp$dx1)
@@ -305,7 +305,7 @@ ICIsmooth <- function(y,
       ind <- ind0[Low[ind0] <= Up[ind0]]
       hbest[ind] <- hakt
       yhat[ind] <- z@yhat[ind]
-      vhat[ind] <- sigma ^ 2 / z@vred
+      vhat[ind] <- sigma ^ 2 * z@vred
       fixed[-ind] <- TRUE
       hakt <- hakt * hinc
       if (sum(fixed) == n)

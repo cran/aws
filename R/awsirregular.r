@@ -60,14 +60,16 @@ aws.irreg <- function(y,
   else
     apply(zbins$x, 2, max)
   mask <- ni > 0
-  if (!is.null(henv))
+  if (!is.null(henv)){
     mask <- .Fortran(C_mask,
-      as.logical(mask),
-      mask = as.logical(mask),
+      as.integer(mask),
+      mask = as.integer(mask),
       as.integer(nbins[1]),
       as.integer(switch(d, 1, nbins[2])),
       as.integer(max(0, henv))
     )$mask
+    mask <- as.logical(mask)
+  }
   yy <- rep(mean(y), length(mask))
   dim(yy) <- dim(mask) <- dim(ni)
   if (d > 1 & graph) {
@@ -77,7 +79,7 @@ aws.irreg <- function(y,
       mgp = c(2, 1, 0)
     )
     image(mask,
-          col = gray((0:255) / 255),
+          col = grey((0:255) / 255),
           xaxt = "n",
           yaxt = "n")
     title("compute estimates on mask ")
@@ -150,7 +152,7 @@ aws.irreg <- function(y,
     bi = ni,
     bi2 = ni ^ 2,
     theta = yy / shape,
-    fix = rep(FALSE, nn)
+    fix = rep(0, nn)
   )
   zobj <- list(ai = yy, bi0 = rep(1, nn))
   vred <- ni
@@ -164,23 +166,19 @@ aws.irreg <- function(y,
   dlw <- (2 * trunc(hpre / c(1, wghts)) + 1)[1:d]
   hobj <- .Fortran(C_cawsmask,
     as.double(yy),
-    as.logical(ni > 0),
+    as.integer(ni > 0),
     # bins where we need estimates
     as.integer(ni),
     # contains number of points in bin
-    as.logical(tobj$fix),
+    as.integer(tobj$fix),
     as.integer(n1),
     as.integer(n2),
     hakt = as.double(hpre),
-    as.double(1e40),
-    as.double(tobj$theta),
     bi = as.double(tobj$bi),
     bi2 = double(nn),
     bi0 = as.double(zobj$bi0),
     ai = as.double(zobj$ai),
-    as.integer(cpar$mcode),
     as.integer(lkern),
-    as.double(0.25),
     double(prod(dlw)),
     as.double(wghts)
   )[c("bi", "ai")]
@@ -205,11 +203,11 @@ aws.irreg <- function(y,
     # heteroskedastic Gaussian case
     zobj <- .Fortran(C_cgawsmas,
       as.double(yy),
-      as.logical(mask),
+      as.integer(mask),
       # bins where we need estimates
       as.integer(ni),
       # contains number of points in bin
-      as.logical(tobj$fix),
+      as.integer(tobj$fix),
       as.double(sigma2),
       as.integer(n1),
       as.integer(n2),
@@ -227,7 +225,7 @@ aws.irreg <- function(y,
       double(prod(dlw)),
       as.double(wghts)
     )[c("bi", "bi0", "bi2", "vred", "ai", "hakt")]
-    vred[!tobj$fix] <- zobj$vred[!tobj$fix]
+    vred[tobj$fix==0] <- zobj$vred[tobj$fix==0]
     dim(zobj$ai) <- dy
     if (hakt > n1 / 2)
       zobj$bi0 <- rep(max(zobj$bi), n1 * n2)
@@ -276,7 +274,7 @@ aws.irreg <- function(y,
           mgp = c(2, 1, 0)
         )
         image(yy,
-              col = gray((0:255) / 255),
+              col = grey((0:255) / 255),
               xaxt = "n",
               yaxt = "n")
         title(paste(
@@ -290,7 +288,7 @@ aws.irreg <- function(y,
           array(pmax(pmin(
             tobj$theta, zlim[2]
           ), zlim[1]), dy),
-          col = gray((0:255) / 255),
+          col = grey((0:255) / 255),
           xaxt = "n",
           yaxt = "n"
         )
@@ -304,7 +302,7 @@ aws.irreg <- function(y,
         ))
         image(
           tobj$bi,
-          col = gray((0:255) / 255),
+          col = grey((0:255) / 255),
           xaxt = "n",
           yaxt = "n"
         )
@@ -370,7 +368,7 @@ aws.irreg <- function(y,
     wghts = wghts,
     varmodel = varmodel,
     vcoef = vcoef,
-    x = x,
+    x = cbind(zbins$midpoints.x1,zbins$midpoints.x2),
     xmin = xmin,
     xmax = xmax
   )
@@ -394,6 +392,7 @@ awsisigma2 <- function(y,
   vredinv[is.na(vredinv)] <- 0
   vredinv[vredinv > 1e10] <- 0
   ind <- vredinv > ni & ni > 0
+  if(sum(ind)>0){
   residsq <-
     pmax(1, ni[ind] - 1) * ((y - tobj$theta)[ind] * vredinv[ind] / (vredinv[ind] -
                                                                       ni[ind])) ^ 2
@@ -426,6 +425,10 @@ awsisigma2 <- function(y,
   )
   varquantile <- quantile(residsq, varprop)
   sigma2 <- eta * pmax(sigma2, varquantile) + (1 - eta) * sigma20
+} else {
+   sigma2 <- sigma20
+   coef <- c(sigma20,0,0)
+}
   #cat("Estimated mean variance",signif(mean(sigma2[ni>0]),3)," Variance parameters:",signif(coef,3),"\n")
   list(si2 = 1 / sigma2, vcoef = coef)
 }

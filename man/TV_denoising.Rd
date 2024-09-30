@@ -57,15 +57,18 @@ TGV_denoising_colour(datanoisy, alpha, beta, iter = 1000, tolmean = 1e-06,
    TV/TGV reconstructed image data (2D array)
 }
 \references{
+             J. Polzehl, K. Papafitsoros, K. Tabelow (2020). Patch-Wise Adaptive Weights Smoothing in R, Journal of
+             Statistical Software, 95(6), 1-27. doi:10.18637/jss.v095.i06.
+
    Rudin, L.I., Osher, S. and Fatemi, E. (1992). Nonlinear total variation based
-   noise removal algorithms. Phys. D, 60, 259-268.
+   noise removal algorithms. Phys. D, 60, 259-268. DOI: 10.1016/0167-2789(92)90242-F.
 
    Bredies, K., Kunisch, K. and Pock, T. (2010). Total Generalized Variation.
-   SIAM J. Imaging Sci., 3, 492-526.
+   SIAM J. Imaging Sci., 3, 492-526. DOI:10.1137/090769521.
 }
 \author{
 Joerg Polzehl, \email{polzehl@wias-berlin.de},
-\url{http://www.wias-berlin.de/people/polzehl/}
+\url{https://www.wias-berlin.de/people/polzehl/}
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
