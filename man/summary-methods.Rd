@@ -8,11 +8,8 @@
 \alias{summary,kernsm-method}
 \title{Methods for Function `summary' from package 'base' in Package `aws' }
 \description{
-The method provides summary information for objects of class \code{"aws"}. }
-\arguments{
-  \item{object}{ Object of class \code{"dti"}, \code{"dtiData"}, \code{"dtiTensor"}, \code{"dwiMixtensor"}, \code{"dtiIndices"},  \code{"dwiQball"} or \code{"dwiFiber"}. }
-  \item{\dots}{ Additional arguments in \code{\dots} are passed to function \code{quantile}, e.g. argument \code{probs} may be specified here.}
-}
+The method provides summary information for objects of class \code{"aws"}, \code{"awssegment"}, 
+\code{"ICIsmooth"} and \code{"kernsm"} }
 \section{Methods}{
 \describe{
 

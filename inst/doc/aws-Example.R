@@ -165,5 +165,3 @@ image(zhat1f, col=grey(0:255/255))
 title("Optimal TV reconstruction")
 image(zhat1g, col=grey(0:255/255))
 title("Optimal TGV reconstruction")
-
-

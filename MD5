@@ -1,4 +1,4 @@
-2eeb5e97595a98a5ad116a386d3de56f *DESCRIPTION
+edcf167f97ba536506fc2ade4cdb632f *DESCRIPTION
 2c3d303fe1827848a77ac7133c458633 *NAMESPACE
 fabb102785cf75738ae8423324fc115a *R/Classes.r
 6f2365831f89a1e1cd970df5a0f17603 *R/ICIsmooth.r
@@ -22,8 +22,8 @@ affa0f569a91864ff1cc317fbade88a0 *R/smse3misc.R
 488ea89ead8a8500b6ec46391fb997a9 *R/vaws.r
 24021f0f3b2357c33f51b203bdfb2396 *R/vpaws.r
 aedae2c17d9dfceeee4d28d3fa67d054 *README
-19978c7b9013aac6e337b685637501b6 *build/partial.rdb
-a9053be844ab3384f2219a692b289290 *build/vignette.rds
+885e4e0f1a114b04a2a1c6264047fead *build/partial.rdb
+e49361b30c67582e9729a9aac9a51d09 *build/vignette.rds
 3323a58981b36d74583a3c65ab657cc0 *demo/00Index
 1523a5dc754a36ecb466d60c8ac29e64 *demo/aws_ex1.r
 b235d578bec04e7d6f3e769b6a2dd09e *demo/aws_ex2.r
@@ -38,9 +38,9 @@ fc2e1bde97627112b7d751ac2957ea17 *demo/irreg_ex1.r
 5a5e01d34219292cb2fb8783a959771f *demo/paws_ex1.r
 a7a0307679af8d8aa31cc4300ca9d4d0 *demo/paws_ex2.r
 b445144fe106fc05523efdbe783ea84b *inst/CITATION
-4fee5cefd8ee5f2654fe852c218a3ea8 *inst/doc/aws-Example.R
-47ea2c20f70dbdce91737b049a53daff *inst/doc/aws-Example.Rnw
-25cb5777188e748a878c41b88207bb4c *inst/doc/aws-Example.pdf
+f87f32977c1f584ccb9bb433af3fe430 *inst/doc/aws-Example.R
+57f5924531131649e7ededf63ef9f503 *inst/doc/aws-Example.Rnw
+45bac00233b7ba86a75ab76abcfc5791 *inst/doc/aws-Example.pdf
 ce25168cddf5065a6a45be8a1b9e18dd *inst/scripts/adjust.r
 d5522dcebd98a8693ad694e959e44fb4 *man/ICIcombined.Rd
 85f9d7ed322cc97049edebf201dc26ae *man/ICIsmooth-class.Rd
@@ -72,7 +72,7 @@ e94e5a1efd2ce42f7d3eaebe3a449c2c *man/risk-methods.Rd
 4ea5586e90b98a588b6056dc2b45cd6e *man/show-methods.Rd
 19c2b93906bc0711a69664b989f9ab2f *man/smooth3D.Rd
 6e68ff212d56105d68dc784795dd2b1a *man/smse3ms.Rd
-1f4b58ed0e54fc05a3ee94ff0f7b8dc1 *man/summary-methods.Rd
+a939fcdbdd4c0040420c732fb20bf31a *man/summary-methods.Rd
 5df3ce95aff26f85f012dec065cd8516 *man/vaws.Rd
 30d3673e1cb0f38321f5da1a672f5f5b *man/vpaws.Rd
 ac64c0c4d3605dd31f2dd988e1ce4e20 *src/ICIsmooth.f
@@ -92,4 +92,4 @@ c4d2847631ad96920fedee007b9fc164 *src/segment.f
 2b38142c7319641ed94f33e1e1af75c2 *src/smooth3d.f
 ac30b8772c51d8cc6a698e2ede78d739 *src/smse3.f
 9c4244ddd694efadf3ff6b91797aee45 *src/varest.f
-47ea2c20f70dbdce91737b049a53daff *vignettes/aws-Example.Rnw
+57f5924531131649e7ededf63ef9f503 *vignettes/aws-Example.Rnw

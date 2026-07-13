@@ -198,7 +198,7 @@ The left Figure shows the the data, estimated regression function (red) in compa
 
 For the 2D examples we employ both the functions \code{aws} and \code{paws}.
 The latter function implements the patchwise adaptive weights algorithm described in
-\cite{PoPaTa18}. 
+\cite{PoPaTa20}. 
 
 <<2c, echo=TRUE, results=hide>>=
 setCores(2)
